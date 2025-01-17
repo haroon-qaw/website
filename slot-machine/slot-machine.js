@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
+  
+  //variables 
   const button = document.getElementById('3d-1-suite');
   const container = document.getElementById('slot-container');
   const totalTimeDiv = document.getElementById('totalTime');
@@ -6,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const maintData = Array.from({ length: 177 }, () => 0); // Array to track frequencies (10-186)
   const bugData = Array.from({ length: 91 }, () => 0); // Array to track frequencies (30-120)
 
+  //chart js declarations
   let maintChart; // Declare the maintenance chart variable
   let bugChart; // Declare the bug chart variable
 
@@ -15,7 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
   resolvingSound.volume = 0.5; // Reduce volume to 50%
   completionSound.volume = 0.5; // Reduce volume to 50%
 
-  let resolvedCount = 0; // Counter for resolved slots
+
+   // Counter for resolved slots
+  let resolvedCount = 0;
 
   // Slot states with probabilities and ranges
   const slotStates = [
@@ -125,37 +130,29 @@ function removeHighlightNumber() {
   });
 }
 
+// Add event listner to the run once button
+button.addEventListener('click', () => {
+  // Clear existing content in the container
+  container.innerHTML = '';
+  resolvedCount = 0; // Reset resolved counter
 
+  // Start resolving sound
+  resolvingSound.loop = true;
+  resolvingSound.play();
 
+  // Generate 250 divs with the class 'slot-test'
+  for (let i = 0; i < 250; i++) {
+    const div = document.createElement('div');
+    div.className = 'slot-test';
+    container.appendChild(div);
 
+    // Start cycling states for each slot
+    startCycling(div);
+  }
+});
 
-
-
-
-
-
-  button.addEventListener('click', () => {
-    // Clear existing content in the container
-    container.innerHTML = '';
-    resolvedCount = 0; // Reset resolved counter
-
-    // Start resolving sound
-    resolvingSound.loop = true;
-    resolvingSound.play();
-
-    // Generate 250 divs with the class 'slot-test'
-    for (let i = 0; i < 250; i++) {
-      const div = document.createElement('div');
-      div.className = 'slot-test';
-      container.appendChild(div);
-
-      // Start cycling states for each slot
-      startCycling(div);
-    }
-  });
-
-  // Function to update the total time and cost
-  function updateTotals() {
+// Function to update the total time and cost
+function updateTotals() {
     const totalMaintTime = maintData.reduce((sum, value, index) => sum + value * (index + 10), 0);
     const totalBugTime = bugData.reduce((sum, value, index) => sum + value * (index + 30), 0);
     const totalTime = (totalMaintTime + totalBugTime) / 60;
@@ -169,136 +166,135 @@ function removeHighlightNumber() {
 
   }
 
-  // Function to initialize the maintenance chart
-  function initializeMaintChart() {
-    const ctx = document.getElementById('maint-chart').getContext('2d');
-    maintChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: Array.from({ length: 177 }, (_, i) => i + 10), // X-axis: 10 to 186
-        datasets: [
-          {
-            label: 'Number of Tests (Maintenance)',
-            data: [...maintData],
-            borderColor: '#3b3bef',
-            backgroundColor: 'rgba(59, 59, 239, 0.2)',
-            borderWidth: 1,
-            pointBackgroundColor: '#3b3bef',
-            pointBorderColor: '#3b3bef',
-            fill: true,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: true },
-          tooltip: {
-            callbacks: {
-              label: function(tooltipItem) {
-                const numTests = tooltipItem.raw;
-                const numMin = tooltipItem.label;
-                return `${numTests} needed ${numMin} to maintain`;
-              },
-            },
-          },
+// Function to initialize the maintenance chart
+function initializeMaintChart() {
+  const ctx = document.getElementById('maint-chart').getContext('2d');
+  maintChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: Array.from({ length: 177 }, (_, i) => i + 10), // X-axis: 10 to 186
+      datasets: [
+        {
+          label: 'Number of Tests (Maintenance)',
+          data: [...maintData],
+          borderColor: '#3b3bef',
+          backgroundColor: 'rgba(59, 59, 239, 0.2)',
+          borderWidth: 1,
+          pointBackgroundColor: '#3b3bef',
+          pointBorderColor: '#3b3bef',
+          fill: true,
         },
-        scales: {
-          x: {
-            title: { display: true, text: 'Maintenance Time (10-186)' },
-            min: 10,
-            max: 186,
-            grid: {
-              color: 'rgba(255, 255, 255, 0.1)',
-            },
-            ticks: {
-              color: '#0df2cc',
-            },
-          },
-          y: {
-            title: { display: true, text: 'Number of Tests' },
-            beginAtZero: true,
-            suggestedMax: 25,
-            grid: {
-              color: 'rgba(255, 255, 255, 0.1)',
-            },
-            ticks: {
-              color: '#0df2cc',
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true },
+        tooltip: {
+          callbacks: {
+            label: function(tooltipItem) {
+              const numTests = tooltipItem.raw;
+              const numMin = tooltipItem.label;
+              return `${numTests} needed ${numMin} to maintain`;
             },
           },
         },
       },
-    });
-  }
+      scales: {
+        x: {
+          title: { display: true, text: 'Maintenance Time (10-186)' },
+          min: 10,
+          max: 186,
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)',
+          },
+          ticks: {
+            color: '#0df2cc',
+          },
+        },
+        y: {
+          title: { display: true, text: 'Number of Tests' },
+          beginAtZero: true,
+          suggestedMax: 25,
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)',
+          },
+          ticks: {
+            color: '#0df2cc',
+          },
+        },
+      },
+    },
+  });
+}
 
 
   // Function to initialize the bug chart
-  function initializeBugChart() {
-    const ctx = document.getElementById('bug-chart').getContext('2d');
-    bugChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: Array.from({ length: 91 }, (_, i) => i + 30), // X-axis: 30 to 120
-        datasets: [
-          {
-            label: 'Number of Tests (Bugs)',
-            data: [...bugData],
-            borderColor: '#f4bdec',
-            backgroundColor: 'rgba(244, 189, 236, 0.2)',
-            borderWidth: 1,
-            pointBackgroundColor: '#f4bdec',
-            pointBorderColor: '#f4bdec',
-            fill: true,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false, // Allows the chart to resize freely
-        plugins: {
-          legend: { display: true },
-          tooltip: {
-            callbacks: {
-              label: function(tooltipItem) {
-                const numTests = tooltipItem.raw;
-                const numMin = tooltipItem.label;
-                return `${numTests} needed ${numMin} to fix`;
-              }
+function initializeBugChart() {
+  const ctx = document.getElementById('bug-chart').getContext('2d');
+  bugChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: Array.from({ length: 91 }, (_, i) => i + 30), // X-axis: 30 to 120
+      datasets: [
+        {
+          label: 'Number of Tests (Bugs)',
+          data: [...bugData],
+          borderColor: '#f4bdec',
+          backgroundColor: 'rgba(244, 189, 236, 0.2)',
+          borderWidth: 1,
+          pointBackgroundColor: '#f4bdec',
+          pointBorderColor: '#f4bdec',
+          fill: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false, // Allows the chart to resize freely
+      plugins: {
+        legend: { display: true },
+        tooltip: {
+          callbacks: {
+            label: function(tooltipItem) {
+              const numTests = tooltipItem.raw;
+              const numMin = tooltipItem.label;
+              return `${numTests} needed ${numMin} to fix`;
             }
+          }
+        },
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Bug Time (30-120)' },
+          min: 30,
+          max: 120,
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)',
+          },
+          ticks: {
+            color: '#0df2cc',
           },
         },
-        scales: {
-          x: {
-            title: { display: true, text: 'Bug Time (30-120)' },
-            min: 30,
-            max: 120,
-            grid: {
-              color: 'rgba(255, 255, 255, 0.1)',
-            },
-            ticks: {
-              color: '#0df2cc',
-            },
+        y: {
+          title: { display: true, text: 'Number of Tests' },
+          beginAtZero: true,
+          suggestedMax: 10,
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)',
           },
-          y: {
-            title: { display: true, text: 'Number of Tests' },
-            beginAtZero: true,
-            suggestedMax: 10,
-            grid: {
-              color: 'rgba(255, 255, 255, 0.1)',
-            },
-            ticks: {
-              color: '#0df2cc',
-            },
+          ticks: {
+            color: '#0df2cc',
           },
         },
       },
-    });
-  }
+    },
+  });
+}
 
 
-
-  // Function to update the maintenance chart
+// Function to update the maintenance chart
 function updateMaintChart() {
   // Directly set the dataset to match the current maintData
   maintChart.data.datasets[0].data = [...maintData];
@@ -306,7 +302,7 @@ function updateMaintChart() {
 }
 
 
-  // Function to update the bug chart
+// Function to update the bug chart
 function updateBugChart() {
   // Directly set the dataset to match the current bugData
   bugChart.data.datasets[0].data = [...bugData];
@@ -314,10 +310,8 @@ function updateBugChart() {
 }
 
 
-  // Initialize charts on page load
-  initializeMaintChart();
-  initializeBugChart();
+// Initialize charts on page load
+initializeMaintChart();
+initializeBugChart();
 });
 
-
-//this is a test for the website
