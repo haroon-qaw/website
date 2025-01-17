@@ -6,8 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const container = document.getElementById('slot-container');
   const totalTimeDiv = document.getElementById('totalTime');
   const totalCostDiv = document.getElementById('totalCost');
-  const maintData = Array.from({ length: 177 }, () => 0); // Array to track frequencies (10-186)
-  const bugData = Array.from({ length: 91 }, () => 0); // Array to track frequencies (30-120)
+  //const maintData = Array.from({ length: 177 }, () => 0); // Array to track frequencies (10-186)
+  //const bugData = Array.from({ length: 91 }, () => 0); // Array to track frequencies (30-120)
 
   //chart js declarations
   let maintChart; // Declare the maintenance chart variable
@@ -183,23 +183,35 @@ buttonRunMonth.addEventListener('click', () => {
 });
 
 
-
-
-
 // Function to update the total time and cost
 function updateTotals() {
-    const totalMaintTime = slotData[slotConfig.maintenance.name].reduce((sum, value, index) => sum + value * (index + slotConfig.maintenance.range[0]), 0);
-    const totalBugTime = slotData[slotConfig.bug.name].reduce((sum, value, index) => sum + value * (index + slotConfig.bug.range[0]), 0);  
-    const totalTime = (totalMaintTime + totalBugTime) / 60;
-    const totalCost = totalTime * 65; // Convert to hours and multiply by rate
+  const totalMaintTime = slotData[slotConfig.maintenance.name].reduce((sum, value, index) => sum + value * (index + slotConfig.maintenance.range[0]), 0);
+  const totalBugTime = slotData[slotConfig.bug.name].reduce((sum, value, index) => sum + value * (index + slotConfig.bug.range[0]), 0);
+  const totalTime = (totalMaintTime + totalBugTime) / 60;
+  const totalCost = totalTime * 65; // Convert to hours and multiply by rate
 
-    totalTimeDiv.textContent = `${totalTime.toFixed(2)} hours`;
-    totalCostDiv.textContent = `$${totalCost.toFixed(2)}`;
+  const totalMaintTests = slotData[slotConfig.maintenance.name].reduce((sum, value) => sum + value, 0); // Calculate total number of maintenance tests
+  const totalBugTests = slotData[slotConfig.bug.name].reduce((sum, value) => sum + value, 0); // Calculate total number of bug tests
 
-    highlightNumber();
+  totalTimeDiv.textContent = `${totalTime.toFixed(2)} hours`;
+  totalCostDiv.textContent = `$${totalCost.toFixed(2)}`;
 
-
+  const totalMaintTestsDiv = document.getElementById('totalMaintTests');
+  if (totalMaintTestsDiv) {
+    totalMaintTestsDiv.textContent = `${totalMaintTests}`;
+  } else {
+    console.error('Element with ID "totalMaintTests" not found.');
   }
+
+  const totalBugTestsDiv = document.getElementById('totalBugTests');
+  if (totalBugTestsDiv) {
+    totalBugTestsDiv.textContent = `${totalBugTests}`;
+  } else {
+    console.error('Element with ID "totalBugTests" not found.');
+  }
+
+  highlightNumber();
+}
 
 // Function to initialize the maintenance chart
 function initializeMaintChart() {
@@ -225,7 +237,7 @@ function initializeMaintChart() {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: true },
+        legend: { display: false },
         tooltip: {
           callbacks: {
             label: function(tooltipItem) {
@@ -290,7 +302,7 @@ function initializeBugChart() {
       responsive: true,
       maintainAspectRatio: false, // Allows the chart to resize freely
       plugins: {
-        legend: { display: true },
+        legend: { display: false },
         tooltip: {
           callbacks: {
             label: function(tooltipItem) {
