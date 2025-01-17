@@ -12,10 +12,13 @@ document.addEventListener('DOMContentLoaded', () => {
   let maintChart; // Declare the maintenance chart variable
   let bugChart; // Declare the bug chart variable
 
-  // Add sounds
+  //Sounds
+  //slots spinning
   const resolvingSound = new Audio('https://cdn.freesound.org/previews/118/118239_1430216-lq.mp3');
-  const completionSound = new Audio('https://cdn.freesound.org/previews/56/56268_91374-lq.mp3');
   resolvingSound.volume = 0.5; // Reduce volume to 50%
+  
+  //stop spinning
+  const completionSound = new Audio('https://cdn.freesound.org/previews/56/56268_91374-lq.mp3');
   completionSound.volume = 0.5; // Reduce volume to 50%
 
 
