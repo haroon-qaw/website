@@ -92,7 +92,7 @@ function getBellCurveRandom(min, max, average) {
     }, 100);
 
     // Stop cycling at a random time between 1 and 3 seconds
-    const stopTime = Math.random() * 2000 + 1000; // Random time in milliseconds
+    const stopTime = Math.random() * 1500 + 500; // Random time in milliseconds
     setTimeout(() => {
       clearInterval(interval);
       const finalState = getWeightedRandomState();
@@ -155,7 +155,7 @@ buttonRunOnce.addEventListener('click', () => {
     const div = document.createElement('div');
     div.className = 'slot-test';
     container.appendChild(div);
-
+    
     startCycling(div);
   }
 });
@@ -164,22 +164,37 @@ buttonRunOnce.addEventListener('click', () => {
 buttonRunMonth.addEventListener('click', () => {
   const spins = 20; // Simulate one month of spins
 
-  // Simulate spins for maintenance and bug data
-  for (let day = 0; day < spins; day++) {
-    for (let i = 0; i < 250; i++) {
-      const finalState = getWeightedRandomState();
-      const randomValue = getBellCurveRandom(finalState.range[0], finalState.range[1], finalState.average);
-      if (finalState.range) {
-        const offset = finalState.range[0];
-        slotData[finalState.name][randomValue - offset]++;
+  // Remove all child divs
+  container.innerHTML = '';
+
+  // Create and display the GIF
+  const gifElement = document.createElement('img');
+  gifElement.src = 'https://cdn.prod.website-files.com/6260298eca091b57c9cf188e/660b0e7df0f9891adf829656_wolf%20sunglasses.gif';
+  gifElement.className = 'slot-month-gif'; // Add a class to the GIF element
+  container.appendChild(gifElement);
+
+  // Hide the GIF after 3 seconds
+  setTimeout(() => {
+    gifElement.remove();
+    completionSound.play();
+
+    // Simulate spins for maintenance and bug data
+    for (let day = 0; day < spins; day++) {
+      for (let i = 0; i < 250; i++) {
+        const finalState = getWeightedRandomState();
+        const randomValue = getBellCurveRandom(finalState.range[0], finalState.range[1], finalState.average);
+        if (finalState.range) {
+          const offset = finalState.range[0];
+          slotData[finalState.name][randomValue - offset]++;
+        }
       }
     }
-  }
 
-  // Update charts and totals cumulatively
-  updateMaintChart();
-  updateBugChart();
-  updateTotals();
+    // Update charts and totals cumulatively
+    updateMaintChart();
+    updateBugChart();
+    updateTotals();
+  }, 1000);
 });
 
 
