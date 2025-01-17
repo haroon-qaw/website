@@ -315,3 +315,4 @@ initializeMaintChart();
 initializeBugChart();
 });
 
+//new test
