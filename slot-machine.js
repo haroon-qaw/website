@@ -318,3 +318,6 @@ function updateBugChart() {
   initializeMaintChart();
   initializeBugChart();
 });
+
+
+//this is a test for the website
