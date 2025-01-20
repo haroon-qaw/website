@@ -32,6 +32,8 @@ new Chart(creationCtx, {
         }]
     },
     options: {
+        responsive: true,
+        maintainAspectRatio: false,
         scales: {
             x: {
                 grid: {
@@ -101,6 +103,8 @@ new Chart(runCtx, {
         }]
     },
     options: {
+        responsive: true,
+        maintainAspectRatio: false,
         scales: {
             x: {
                 grid: {
@@ -139,9 +143,9 @@ new Chart(runCtx, {
 const failCtx = document.getElementById('failChart').getContext('2d');
 
 // Generate data for the fail rate bell curve
-const failXValues = Array.from({ length: 39 }, (_, i) => 2 + i); // x-axis from 2% to 40% with 1% increments
-const failMean = 17;
-const failStdDev = 4;
+const failXValues = Array.from({ length: 390 }, (_, i) => 2 + i * 0.1); // x-axis from 2% to 40% with 0.1% increments
+const failMean = 15; // Updated average fail rate
+const failStdDev = 3; // Updated standard deviation
 
 // Gaussian function for the fail rate chart
 const bellCurveFail = x => {
@@ -156,10 +160,9 @@ const failYValues = failXValues.map(x => bellCurveFail(x));
 new Chart(failCtx, {
     type: 'line',
     data: {
-        labels: failXValues,
         datasets: [{
             label: 'Fail Rate Bell Curve',
-            data: failYValues,
+            data: failXValues.map((x, i) => ({ x, y: failYValues[i] })), // Use {x, y} format for numeric scales
             borderColor: '#f4bdec', // Line color
             backgroundColor: 'rgba(244, 189, 236, 0.5)', // Fill color
             borderWidth: 2,
@@ -168,6 +171,81 @@ new Chart(failCtx, {
         }]
     },
     options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            x: {
+                type: 'linear', // Numeric x-axis
+                grid: {
+                    color: 'rgba(13, 242, 204, 0.5)' // X-axis grid color
+                },
+                title: {
+                    display: true,
+                    color: '#0DF2CC',
+                    text: 'failure rate (%)'
+                },
+                ticks: {
+                    callback: value => `${value}`, // Format ticks as percentages
+                    color: '#0DF2CC' // X-axis tick color
+                },
+                min: 2, // Set minimum value for x-axis
+                max: 40 // Set maximum value for x-axis
+            },
+            y: {
+                grid: {
+                    color: 'rgba(13, 242, 204, 0)' // Y-axis grid color
+                },
+                ticks: {
+                    display: false // Hide y-axis labels
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false // Disable legend
+            }
+        }
+    }
+});
+
+
+
+
+//create investigation chart
+const investigationCtx = document.getElementById('investigationChart').getContext('2d');
+
+// Generate data for the investigation bell curve
+const investigationXValues = Array.from({ length: 38 }, (_, i) => 3 + i); // x-axis from 3 to 40 with 1-minute increments
+const investigationMean = 17;
+const investigationStdDev = 5;
+
+// Gaussian function for the investigation chart
+const bellCurveInvestigation = x => {
+    return (1 / (investigationStdDev * Math.sqrt(2 * Math.PI))) * 
+           Math.exp(-0.5 * Math.pow((x - investigationMean) / investigationStdDev, 2));
+};
+
+// Compute y-values for the investigation bell curve
+const investigationYValues = investigationXValues.map(x => bellCurveInvestigation(x));
+
+// Create the investigation chart
+new Chart(investigationCtx, {
+    type: 'line',
+    data: {
+        labels: investigationXValues,
+        datasets: [{
+            label: 'Investigation Time Bell Curve',
+            data: investigationYValues,
+            borderColor: '#f4bdec', // Line color
+            backgroundColor: 'rgba(244, 189, 236, 0.5)', // Fill color
+            borderWidth: 2,
+            pointRadius: 0, // Remove dots
+            fill: true // Enable fill
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
         scales: {
             x: {
                 grid: {
@@ -176,10 +254,10 @@ new Chart(failCtx, {
                 title: {
                     display: true,
                     color: '#0DF2CC',
-                    text: 'Failure rate (%)'
+                    text: 'investigation time (minutes)'
                 },
                 ticks: {
-                    callback: value => `${value}`, // Format ticks as percentages
+                    callback: value => `${value}`, // Format ticks as minutes
                     color: '#0DF2CC' // X-axis tick color
                 }
             },
@@ -199,3 +277,4 @@ new Chart(failCtx, {
         }
     }
 });
+
