@@ -1,0 +1,201 @@
+
+// Creation chart
+const creationCtx = document.getElementById('creationChart').getContext('2d');
+
+// Generate data for the first bell curve
+const creationXValues = Array.from({ length: 177 }, (_, i) => i + 10); // x-axis from 10 to 186
+const creationMean = 95;
+const creationStdDev = 27;
+
+// Gaussian function for the first chart
+const bellCurveCreation = x => {
+    return (1 / (creationStdDev * Math.sqrt(2 * Math.PI))) * 
+           Math.exp(-0.5 * Math.pow((x - creationMean) / creationStdDev, 2));
+};
+
+// Compute y-values for the first bell curve
+const creationYValues = creationXValues.map(x => bellCurveCreation(x));
+
+// Create the creation chart
+new Chart(creationCtx, {
+    type: 'line',
+    data: {
+        labels: creationXValues,
+        datasets: [{
+            label: 'Bell Curve',
+            data: creationYValues,
+            borderColor: '#f4bdec', // Line color
+            backgroundColor: 'rgba(244, 189, 236, 0.5)', // Fill color
+            borderWidth: 2,
+            pointRadius: 0, // Remove dots
+            fill: true // Enable fill
+        }]
+    },
+    options: {
+        scales: {
+            x: {
+                grid: {
+                    color: 'rgba(13, 242, 204, 0.25)' // X-axis grid color
+                },
+                title: {
+                    display: true,
+                    text: 'minutes',
+                    color: '#0DF2CC'
+                },
+                ticks: {
+                    color: '#0DF2CC' // X-axis tick color
+                }
+            },
+            y: {
+                grid: {
+                    color: 'rgba(13, 242, 204, 0)' // Y-axis grid color
+                },
+                ticks: {
+                    display: false // Hide y-axis labels
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false // Disable legend
+            }
+        }
+    }
+});
+
+
+
+
+
+
+// Run chart
+const runCtx = document.getElementById('runChart').getContext('2d');
+
+// Generate data for the second bell curve
+const runXValues = Array.from({ length: 14 }, (_, i) => i + 3); // x-axis from 3 to 16
+const runMean = 9;
+const runStdDev = 1.5;
+
+// Gaussian function for the second chart
+const bellCurveRun = x => {
+    return (1 / (runStdDev * Math.sqrt(2 * Math.PI))) * 
+           Math.exp(-0.5 * Math.pow((x - runMean) / runStdDev, 2));
+};
+
+// Compute y-values for the second bell curve
+const runYValues = runXValues.map(x => bellCurveRun(x));
+
+// Create the second chart
+new Chart(runCtx, {
+    type: 'line',
+    data: {
+        labels: runXValues,
+        datasets: [{
+            label: 'Bell Curve',
+            data: runYValues,
+            borderColor: '#f4bdec', // Line color
+            backgroundColor: 'rgba(244, 189, 236, 0.5)', // Fill color
+            borderWidth: 2,
+            pointRadius: 0, // Remove dots
+            fill: true // Enable fill
+        }]
+    },
+    options: {
+        scales: {
+            x: {
+                grid: {
+                    color: 'rgba(13, 242, 204, 0.5)' // X-axis grid color
+                },
+                title: {
+                    display: true,
+                    color: '#0DF2CC',
+                    text: 'minutes'
+                },
+                ticks: {
+                    color: '#0DF2CC' // X-axis tick color
+                }
+            },
+            y: {
+                grid: {
+                    color: 'rgba(13, 242, 204, 0)' // Y-axis grid color
+                },
+                ticks: {
+                    display: false // Hide y-axis labels
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false // Disable legend
+            }
+        }
+    }
+});
+
+
+
+
+//fail chart
+const failCtx = document.getElementById('failChart').getContext('2d');
+
+// Generate data for the fail rate bell curve
+const failXValues = Array.from({ length: 39 }, (_, i) => 2 + i); // x-axis from 2% to 40% with 1% increments
+const failMean = 17;
+const failStdDev = 4;
+
+// Gaussian function for the fail rate chart
+const bellCurveFail = x => {
+    return (1 / (failStdDev * Math.sqrt(2 * Math.PI))) * 
+           Math.exp(-0.5 * Math.pow((x - failMean) / failStdDev, 2));
+};
+
+// Compute y-values for the fail rate bell curve
+const failYValues = failXValues.map(x => bellCurveFail(x));
+
+// Create the fail rate chart
+new Chart(failCtx, {
+    type: 'line',
+    data: {
+        labels: failXValues,
+        datasets: [{
+            label: 'Fail Rate Bell Curve',
+            data: failYValues,
+            borderColor: '#f4bdec', // Line color
+            backgroundColor: 'rgba(244, 189, 236, 0.5)', // Fill color
+            borderWidth: 2,
+            pointRadius: 0, // Remove dots
+            fill: true // Enable fill
+        }]
+    },
+    options: {
+        scales: {
+            x: {
+                grid: {
+                    color: 'rgba(13, 242, 204, 0.5)' // X-axis grid color
+                },
+                title: {
+                    display: true,
+                    color: '#0DF2CC',
+                    text: 'Failure rate (%)'
+                },
+                ticks: {
+                    callback: value => `${value}`, // Format ticks as percentages
+                    color: '#0DF2CC' // X-axis tick color
+                }
+            },
+            y: {
+                grid: {
+                    color: 'rgba(13, 242, 204, 0)' // Y-axis grid color
+                },
+                ticks: {
+                    display: false // Hide y-axis labels
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false // Disable legend
+            }
+        }
+    }
+});
