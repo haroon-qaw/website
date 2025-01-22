@@ -105,6 +105,18 @@
       }
     );
 
+    //step 4: line from investigate to flake
+    new LeaderLine(
+      document.getElementById('mt_investigate'),
+      document.getElementById('mt_flake'),
+      {
+        color: 'white',      // Line color
+        size: 4,            // Line thickness
+        dash: {animation: true},
+        endPlug: 'arrow2',
+      }
+    );
+
     //mobile only lines below -----------------------------------
 
     //step 1: line from header to test_card-creation
@@ -122,8 +134,8 @@
                 offset: [20,-75],
 
             }
-
         ),
+        
       }
       
     );

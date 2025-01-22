@@ -211,7 +211,7 @@ new Chart(failCtx, {
 
 
 
-//create investigation chart
+// Create investigation chart
 const investigationCtx = document.getElementById('investigationChart').getContext('2d');
 
 // Generate data for the investigation bell curve
@@ -225,17 +225,16 @@ const bellCurveInvestigation = x => {
            Math.exp(-0.5 * Math.pow((x - investigationMean) / investigationStdDev, 2));
 };
 
-// Compute y-values for the investigation bell curve
-const investigationYValues = investigationXValues.map(x => bellCurveInvestigation(x));
+// Prepare data in {x, y} format for numeric scaling
+const investigationData = investigationXValues.map(x => ({ x, y: bellCurveInvestigation(x) }));
 
 // Create the investigation chart
 new Chart(investigationCtx, {
     type: 'line',
     data: {
-        labels: investigationXValues,
         datasets: [{
             label: 'Investigation Time Bell Curve',
-            data: investigationYValues,
+            data: investigationData, // Use {x, y} data format
             borderColor: '#f4bdec', // Line color
             backgroundColor: 'rgba(244, 189, 236, 0.5)', // Fill color
             borderWidth: 2,
@@ -248,13 +247,16 @@ new Chart(investigationCtx, {
         maintainAspectRatio: false,
         scales: {
             x: {
+                type: 'linear', // Numeric scale
+                min: 3, // Set minimum value for x-axis
+                max: 40, // Set maximum value for x-axis
                 grid: {
                     color: 'rgba(13, 242, 204, 0.5)' // X-axis grid color
                 },
                 title: {
                     display: true,
                     color: '#0DF2CC',
-                    text: 'investigation time (minutes)'
+                    text: 'minutes'
                 },
                 ticks: {
                     callback: value => `${value}`, // Format ticks as minutes
@@ -277,4 +279,5 @@ new Chart(investigationCtx, {
         }
     }
 });
+
 
