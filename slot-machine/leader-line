@@ -1,0 +1,135 @@
+<!-- Include LeaderLine library from Cloudflare -->
+<script src="https://cdn.jsdelivr.net/npm/leader-line@1.0.0/leader-line.min.js"></script>
+
+<script>
+  window.onload = function() {
+    //step 1: line from creation to run
+    new LeaderLine(
+      document.getElementById('mt_creation'),
+      document.getElementById('mt_run'),
+      {
+        color: 'white',      // Line color
+        size: 4,            // Line thickness
+        dash: {animation: true},
+        endPlug: 'arrow2',
+        endLabel: LeaderLine.captionLabel('the test is ran',
+            {
+                outlineColor:'',
+                offset: [20,-75],
+
+            }
+
+        ),
+      }
+    );
+    
+    
+    
+    
+    //step 2: line from run to fail
+    new LeaderLine(
+      document.getElementById('mt_run'),
+      document.getElementById('mt_fail'),
+      {
+        color: 'white',      // Line color
+        size: 4,            // Line thickness
+        dash: {animation: true},
+        endPlug: 'arrow2',
+        endLabel: LeaderLine.captionLabel('test fails',
+            {
+                outlineColor:'',
+                offset: [-75,-50],
+
+            }
+
+        ),
+      }
+    );
+    
+    
+    
+    //step 2: line from run to pass
+    new LeaderLine(
+      document.getElementById('mt_run'),
+      document.getElementById('mt_pass'),
+      {
+        color: 'white',      // Line color
+        size: 4,            // Line thickness
+        dash: {animation: true},
+        endPlug: 'arrow2',
+        endLabel: LeaderLine.captionLabel('test passes',
+            {
+                outlineColor:'',
+                offset: [20,-50],
+
+            }
+
+        ),
+      }
+    );
+
+    //step 3: line from fail to investigate
+    new LeaderLine(
+      document.getElementById('mt_fail'),
+      document.getElementById('mt_investigate'),
+      {
+        color: 'white',      // Line color
+        size: 4,            // Line thickness
+        dash: {animation: true},
+        endPlug: 'arrow2',
+      }
+    );
+
+
+    //step 4: line from investigate to maint
+    new LeaderLine(
+      document.getElementById('mt_investigate'),
+      document.getElementById('mt_maint'),
+      {
+        color: 'white',      // Line color
+        size: 4,            // Line thickness
+        dash: {animation: true},
+        endPlug: 'arrow2',
+      }
+    );
+
+    //step 4: line from investigate to bug
+    new LeaderLine(
+      document.getElementById('mt_investigate'),
+      document.getElementById('mt_bug'),
+      {
+        color: 'white',      // Line color
+        size: 4,            // Line thickness
+        dash: {animation: true},
+        endPlug: 'arrow2',
+      }
+    );
+
+    //mobile only lines below -----------------------------------
+
+    //step 1: line from header to test_card-creation
+    new LeaderLine(
+      document.getElementById('mt-header'),
+      document.getElementById('mt_creation'),
+      {
+        color: 'white',      // Line color
+        size: 4,            // Line thickness
+        dash: {animation: true},
+        endPlug: 'arrow2',
+        endLabel: LeaderLine.captionLabel('a test is born',
+            {
+                outlineColor:'',
+                offset: [20,-75],
+
+            }
+
+        ),
+      }
+      
+    );
+
+
+
+    
+  };
+</script>
