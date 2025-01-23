@@ -18,6 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Totals display
   const totalTimeDiv = document.getElementById('totalTime');
   const totalCostDiv = document.getElementById('totalCost');
+  const totalTimeMaintDiv = document.getElementById('totalTime-maint');
+  const totalTimeBugDiv = document.getElementById('totalTime-bugs');
+  const totalTimeInvestigationDiv = document.getElementById('totalTime-investigation');
+
 
   // Audio
   const resolvingSound = new Audio('https://cdn.freesound.org/previews/118/118239_1430216-lq.mp3');
@@ -348,50 +352,84 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ----- Totals -----
   function updateTotals() {
-    // --- Maintenance Time Summation ---
+    // --- (A) Maintenance & Bug Test Time Summation ---
     const totalMaintTime = slotData['slot-test-maint'].reduce((sum, count, idx) => {
-      // The actual minute offset: distributionConfig.maintenance.range[0]
       const actualMin = idx + distributionConfig.maintenance.range[0];
       return sum + count * actualMin;
     }, 0);
   
-    // --- Bug Time Summation ---
     const totalBugTime = slotData['slot-test-bug'].reduce((sum, count, idx) => {
       const actualMin = idx + distributionConfig.bug.range[0];
       return sum + count * actualMin;
     }, 0);
   
-    // --- Convert total minutes to hours & cost ---
-    const totalTime = (totalMaintTime + totalBugTime) / 60;
-    const totalCost = totalTime * 65; // Example rate = $65/hour
+    // We still calculate flake time (for reference, if needed),
+    // but it won't be added to the final total:
+    const totalFlakeTime = slotData['slot-test-flake'].reduce((sum, count, idx) => {
+      const actualMin = idx + distributionConfig.flake.range[0];
+      return sum + count * actualMin;
+    }, 0);
   
-    // --- Update the "time" and "cost" DOM elements ---
-    totalTimeDiv.textContent = `${totalTime.toFixed(2)} hours`;
+    // --- (B) Investigation Time Summation (including flake) ---
+    const totalBugInvestTime = investigationData.bug.reduce((sum, count, idx) => {
+      const actualMin = idx + investigationTimesConfig.bug.range[0];
+      return sum + count * actualMin;
+    }, 0);
+  
+    const totalMaintInvestTime = investigationData.maintenance.reduce((sum, count, idx) => {
+      const actualMin = idx + investigationTimesConfig.maintenance.range[0];
+      return sum + count * actualMin;
+    }, 0);
+  
+    const totalFlakeInvestTime = investigationData.flake.reduce((sum, count, idx) => {
+      const actualMin = idx + investigationTimesConfig.flake.range[0];
+      return sum + count * actualMin;
+    }, 0);
+  
+    const totalInvestigationTime = totalBugInvestTime + totalMaintInvestTime + totalFlakeInvestTime;
+  
+    // --- (C) Combine: Only Bug + Maint Test Time, plus all Investigation Time ---
+    const totalTestTime = totalBugTime + totalMaintTime;  // FLake test time removed from total
+    const grandTotalMinutes = totalTestTime + totalInvestigationTime;
+  
+    // --- (D) Convert to hours & cost ---
+    const totalTimeHours = grandTotalMinutes / 60;
+    const totalCost = totalTimeHours * 65; // e.g., $65/hour
+  
+    // --- (E) Update DOM for overall time & cost ---
+    totalTimeDiv.textContent = `${totalTimeHours.toFixed(2)} hours`;
     totalCostDiv.textContent = `$${totalCost.toFixed(2)}`;
+
+    //--- (E) If you want breakdowns, you can do them similarly:
+    totalTimeMaintDiv.textContent = `${(totalMaintTime / 60).toFixed(2)} hours for maintenance`;
+    totalTimeBugDiv.textContent   = `${(totalBugTime / 60).toFixed(2)} hours for bugs`;
+    totalTimeInvestigationDiv.textContent = `${(totalInvestigationTime / 60).toFixed(2)} hours for investigation`;
+    
+
   
-    // --- Count the total number of Maintenance tests ---
-    const totalMaintTests = slotData['slot-test-maint'].reduce((sum, value) => sum + value, 0);
+    // --- (F) Count # of each test type (unchanged) ---
+    const totalMaintTests = slotData['slot-test-maint'].reduce((s, v) => s + v, 0);
+    const totalBugTests   = slotData['slot-test-bug'].reduce((s, v) => s + v, 0);
+    const totalFlakeTests = slotData['slot-test-flake'].reduce((s, v) => s + v, 0);
+  
     const totalMaintTestsDiv = document.getElementById('totalMaintTests');
     if (totalMaintTestsDiv) totalMaintTestsDiv.textContent = String(totalMaintTests);
   
-    // --- Count the total number of Bug tests ---
-    const totalBugTests = slotData['slot-test-bug'].reduce((sum, value) => sum + value, 0);
     const totalBugTestsDiv = document.getElementById('totalBugTests');
     if (totalBugTestsDiv) totalBugTestsDiv.textContent = String(totalBugTests);
   
-    // --- Count the total number of Flakes ---
-    const totalFlakeTests = slotData['slot-test-flake'].reduce((sum, value) => sum + value, 0);
     const totalFlakeTestsDiv = document.getElementById('totalFlakeTests');
     if (totalFlakeTestsDiv) totalFlakeTestsDiv.textContent = String(totalFlakeTests);
   
-    // --- Sum all failures (flake + bug + maintenance) ---
+    // --- (G) Sum all failures (flake + bug + maintenance) ---
     const totalFailures = totalFlakeTests + totalBugTests + totalMaintTests;
     const totalInvestigationTestsDiv = document.getElementById('totalInvestigationTests');
     if (totalInvestigationTestsDiv) totalInvestigationTestsDiv.textContent = String(totalFailures);
   
-    // --- Optionally highlight or remove highlight, etc. ---
+    // highlight or anything else
     highlightNumber();
   }
+  
   
 
   //creates run log table
@@ -409,7 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const runMaint = currentMaint - lastTotals.maint;
     const runTotal = runPass + runFlake + runBug + runMaint;
   
-    // 3) Update the snapshot
+    // Update snapshot
     lastTotals.pass  = currentPass;
     lastTotals.flake = currentFlake;
     lastTotals.bug   = currentBug;
@@ -420,71 +458,104 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
   
-    // 4) Create a row in .run-log_wrapper
+    // 3) Insert a row in .run-log_wrapper
     const runLogWrapper = document.querySelector('.run-log_wrapper');
-    if (!runLogWrapper) {
-      console.error('No .run-log_wrapper found!');
-      return;
-    }
+    if (!runLogWrapper) return;
+  
     const row = document.createElement('div');
     row.className = 'run-log_row';
+
+    // Add a highlight
+    row.classList.add('highlight-new_row');
   
-    // 5) Add a summary div
-    const summary = document.createElement('div');
-    summary.className = 'run-summary';
-    summary.textContent = `
-      ${runType} => 
-      Total: ${runTotal} 
-      [Pass: ${runPass}, Flake: ${runFlake}, Bug: ${runBug}, Maint: ${runMaint}]
-    `;
+    // ---- TOP SECTION: run-type + results
+    const topSection = document.createElement('div');
+    topSection.className = 'run-log_top';
   
-    // 6) Make a horizontal progress bar container
-    const progressBar = document.createElement('div');
-    progressBar.className = 'progress-bar';
+    // A) Left: run type
+    const runTypeDiv = document.createElement('div');
+    runTypeDiv.className = 'run-type';
+    runTypeDiv.textContent = runType; // e.g. "Single Suite Run"
   
-    // 7) Calculate percentages
+    // B) Right: results with colored circles
+    const resultsDiv = document.createElement('div');
+    resultsDiv.className = 'run-results';
+    resultsDiv.appendChild(createResultItem('pass',   runPass,   'Pass'));
+    resultsDiv.appendChild(createResultItem('flake',  runFlake,  'Flake'));
+    resultsDiv.appendChild(createResultItem('bug',    runBug,    'Bug'));
+    resultsDiv.appendChild(createResultItem('maint',  runMaint,  'Maint'));
+  
+    // Put runTypeDiv & resultsDiv in topSection
+    topSection.appendChild(runTypeDiv);
+    topSection.appendChild(resultsDiv);
+  
+    // ---- BOTTOM SECTION: progress bar
+    const barContainer = document.createElement('div');
+    barContainer.className = 'run-progress-bar';
+  
+    // 4) Build segments for pass/flake/bug/maint
     const passPct  = (runPass  / runTotal) * 100;
     const flakePct = (runFlake / runTotal) * 100;
     const bugPct   = (runBug   / runTotal) * 100;
     const maintPct = (runMaint / runTotal) * 100;
   
-    // 8) Build each segment (horizontal)
-    const passSegment = document.createElement('div');
+    const passSegment  = document.createElement('div');
     passSegment.className = 'progress-segment pass-segment';
-    passSegment.style.width = passPct + '%';   // HORIZONTAL sizing
-    passSegment.style.height = '100%';         // fill container height
+    passSegment.style.width = passPct + '%';
   
     const flakeSegment = document.createElement('div');
     flakeSegment.className = 'progress-segment flake-segment';
     flakeSegment.style.width = flakePct + '%';
-    flakeSegment.style.height = '100%';
   
-    const bugSegment = document.createElement('div');
+    const bugSegment   = document.createElement('div');
     bugSegment.className = 'progress-segment bug-segment';
     bugSegment.style.width = bugPct + '%';
-    bugSegment.style.height = '100%';
   
     const maintSegment = document.createElement('div');
     maintSegment.className = 'progress-segment maint-segment';
     maintSegment.style.width = maintPct + '%';
-    maintSegment.style.height = '100%';
   
-    // 9) Append segments in the order you'd like to see them (left -> right)
-    //    e.g. pass first, then flake, then bug, then maint
-    progressBar.appendChild(passSegment);
-    progressBar.appendChild(flakeSegment);
-    progressBar.appendChild(bugSegment);
-    progressBar.appendChild(maintSegment);
+    barContainer.appendChild(passSegment);
+    barContainer.appendChild(flakeSegment);
+    barContainer.appendChild(bugSegment);
+    barContainer.appendChild(maintSegment);
   
-    // 10) Add summary + bar to the row, then row to the wrapper
-    row.appendChild(summary);
-    row.appendChild(progressBar);
+    // 5) Put top section & bar container into row, then row into wrapper
+    row.appendChild(topSection);
+    row.appendChild(barContainer);
     runLogWrapper.appendChild(row);
+    
+    // Now force scroll to bottom
+    runLogWrapper.scrollTop = runLogWrapper.scrollHeight;
+    
+    //remove highlight from new row
+    setTimeout(() => {
+        row.classList.remove('highlight-new_row');
+    }, 1000);
+
+
+}
+
+
+
+  
+  // Helper for "Pass:10" with a color circle
+  function createResultItem(key, count, label) {
+    const span = document.createElement('span');
+    span.className = 'result-item';
+  
+    const circle = document.createElement('div');
+    circle.className = `result-circle ${key}-circle`;
+  
+    const text = document.createElement('span');
+    text.textContent = ` ${label}:${count}`;
+  
+    span.appendChild(circle);
+    span.appendChild(text);
+    return span;
   }
   
-  
-  
-  
+
   
 
 
