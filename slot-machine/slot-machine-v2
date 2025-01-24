@@ -28,50 +28,47 @@ document.addEventListener('DOMContentLoaded', () => {
   resolvingSound.volume = 0.5;
   const completionSound = new Audio('https://cdn.freesound.org/previews/56/56268_91374-lq.mp3');
   completionSound.volume = 0.5;
+  const insertCoinSound = new Audio('https://cdn.freesound.org/previews/113/113095_1966560-lq.mp3');
 
 
-  // Pass vs. Fail rates
-  // Adjust these to control how often you get pass/fail results
+  // Set how frequently tests fail
   const passFailRates = {
     pass: 85,  // 70% pass
     fail: 15   // 30% fail
   };
 
   // Within a failure, how do we distribute among flake/bug/maint?
-  // Make sure these add up to 100 if you want an easy distribution
   const failTypeRates = {
-    flake: 45,   // 50% of fails
-    bug: 5,     // 30% of fails
-    maint: 50    // 20% of fails
+    flake: 45,   // 45% of fails
+    bug: 5,     // 5% of fails
+    maint: 50    // 50% of fails
   };
 
   // Distributions for the actual "fix/maint time" or pass time
-  // Ranges and averages can be changed to fit your scenario
   const distributionConfig = {
     pass: {
       name: 'slot-test-pass',
-      range: [1, 5],
-      average: 3
+      range: [1, 5], //not used
+      average: 3 //not used
     },
     bug: {
       name: 'slot-test-bug',
-      range: [15, 45],
+      range: [15, 45], //scale for min/max 
       average: 30
     },
     maintenance: {
       name: 'slot-test-maint',
-      range: [10, 100],
+      range: [10, 100], //scale for min/max 
       average: 45
     },
     flake: {
       name: 'slot-test-flake',
-      range: [2, 10],
+      range: [2, 10], //scale for min/max 
       average: 6
     }
   };
 
   // The investigation-time distributions for each fail type
-  // (These can also be tested with a bell-curve approach)
   const investigationTimesConfig = {
     bug: {
       range: [3, 40],
@@ -261,6 +258,9 @@ document.addEventListener('DOMContentLoaded', () => {
   buttonRunOnce.addEventListener('click', () => {
     container.innerHTML = '';
     resolvedCount = 0;
+
+    //play insert coin sound
+    insertCoinSound.play();
   
     // 1) Capture the 'before' totals from slotData
     //    so we know how many flakes/bugs/maint we had prior to THIS run.
@@ -287,6 +287,9 @@ document.addEventListener('DOMContentLoaded', () => {
   buttonRunMonth.addEventListener('click', () => {
     const spins = 20; // number of "days" or "batches"
     container.innerHTML = '';
+
+    //play insert coin sound
+    insertCoinSound.play();
   
     // STEP A: Snapshot the baseline so we know the "before" totals
     lastTotals.flake = slotData['slot-test-flake'].reduce((sum, val) => sum + val, 0);
@@ -397,14 +400,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalCost = totalTimeHours * 65; // e.g., $65/hour
   
     // --- (E) Update DOM for overall time & cost ---
-    totalTimeDiv.textContent = `${totalTimeHours.toFixed(2)} hours`;
-    totalCostDiv.textContent = `$${totalCost.toFixed(2)}`;
+    totalTimeDiv.textContent = `${totalTimeHours.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours`;
+    totalCostDiv.textContent = `$${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-    //--- (E) If you want breakdowns, you can do them similarly:
-    totalTimeMaintDiv.textContent = `${(totalMaintTime / 60).toFixed(2)} hours for maintenance`;
-    totalTimeBugDiv.textContent   = `${(totalBugTime / 60).toFixed(2)} hours for bugs`;
-    totalTimeInvestigationDiv.textContent = `${(totalInvestigationTime / 60).toFixed(2)} hours for investigation`;
-    
+    // --- (E) Breakdown times ---
+    totalTimeMaintDiv.textContent = `${(totalMaintTime / 60).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours for maintenance`;
+    totalTimeBugDiv.textContent = `${(totalBugTime / 60).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours for bugs`;
+    totalTimeInvestigationDiv.textContent = `${(totalInvestigationTime / 60).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours for investigation`;
+
 
   
     // --- (F) Count # of each test type (unchanged) ---
@@ -607,7 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
             grid: { color: 'rgba(255, 255, 255, 0.1)' },
             ticks: { color: '#0df2cc' },
             suggestedMin: 0,    // Start from 0
-            suggestedMax: 40,   // Start the upper limit at 40
+            suggestedMax: 10,   // Start the upper limit at 40
           },
         },
       },
@@ -661,7 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
             grid: { color: 'rgba(255, 255, 255, 0.1)' },
             ticks: { color: '#0df2cc' },
             suggestedMin: 0,    // Start from 0
-            suggestedMax: 20,   // Start the upper limit at 20
+            suggestedMax: 10,   // Start the upper limit at 20
           },
         },
       },
