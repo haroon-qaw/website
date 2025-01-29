@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resolvingSound.pause();
         resolvingSound.currentTime = 0;
         completionSound.play();
-        logRun("Single run");
+        logRun("1 run");
       }
     }, stopTime);
   }
@@ -440,21 +440,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1) Current totals
     const currentPass  = slotData['slot-test-pass'].reduce((sum, val) => sum + val, 0);
     const currentFlake = slotData['slot-test-flake'].reduce((sum, val) => sum + val, 0);
-    const currentBug   = slotData['slot-test-bug'].reduce((sum, val) => sum + val, 0);
     const currentMaint = slotData['slot-test-maint'].reduce((sum, val) => sum + val, 0);
+    const currentBug   = slotData['slot-test-bug'].reduce((sum, val) => sum + val, 0);
+    
   
     // 2) Run-only data
     const runPass  = currentPass  - lastTotals.pass;
     const runFlake = currentFlake - lastTotals.flake;
-    const runBug   = currentBug   - lastTotals.bug;
     const runMaint = currentMaint - lastTotals.maint;
+    const runBug   = currentBug   - lastTotals.bug;
     const runTotal = runPass + runFlake + runBug + runMaint;
   
     // Update snapshot
     lastTotals.pass  = currentPass;
     lastTotals.flake = currentFlake;
-    lastTotals.bug   = currentBug;
     lastTotals.maint = currentMaint;
+    lastTotals.bug   = currentBug;
+
   
     if (runTotal === 0) {
       console.log("No new tests in this run.");
@@ -485,8 +487,9 @@ document.addEventListener('DOMContentLoaded', () => {
     resultsDiv.className = 'run-results';
     resultsDiv.appendChild(createResultItem('pass',   runPass,   'Pass'));
     resultsDiv.appendChild(createResultItem('flake',  runFlake,  'Flake'));
-    resultsDiv.appendChild(createResultItem('bug',    runBug,    'Bug'));
     resultsDiv.appendChild(createResultItem('maint',  runMaint,  'Maint'));
+    resultsDiv.appendChild(createResultItem('bug',    runBug,    'Bug'));
+    
   
     // Put runTypeDiv & resultsDiv in topSection
     topSection.appendChild(runTypeDiv);
@@ -509,19 +512,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const flakeSegment = document.createElement('div');
     flakeSegment.className = 'progress-segment flake-segment';
     flakeSegment.style.width = flakePct + '%';
-  
+     
+    const maintSegment = document.createElement('div');
+    maintSegment.className = 'progress-segment maint-segment';
+    maintSegment.style.width = maintPct + '%';
+    
     const bugSegment   = document.createElement('div');
     bugSegment.className = 'progress-segment bug-segment';
     bugSegment.style.width = bugPct + '%';
   
-    const maintSegment = document.createElement('div');
-    maintSegment.className = 'progress-segment maint-segment';
-    maintSegment.style.width = maintPct + '%';
+
   
     barContainer.appendChild(passSegment);
     barContainer.appendChild(flakeSegment);
-    barContainer.appendChild(bugSegment);
     barContainer.appendChild(maintSegment);
+    barContainer.appendChild(bugSegment);
   
     // 5) Put top section & bar container into row, then row into wrapper
     row.appendChild(topSection);

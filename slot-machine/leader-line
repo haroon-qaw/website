@@ -12,14 +12,14 @@
         size: 4,            // Line thickness
         dash: {animation: true},
         endPlug: 'arrow2',
-        endLabel: LeaderLine.captionLabel('the test is ran',
-            {
-                outlineColor:'',
-                offset: [20,-75],
+        // endLabel: LeaderLine.captionLabel('the test is ran',
+        //     {
+        //         outlineColor:'',
+        //         offset: [20,-75],
 
-            }
+        //     }
 
-        ),
+        // ),
       }
     );
     
@@ -35,14 +35,14 @@
         size: 4,            // Line thickness
         dash: {animation: true},
         endPlug: 'arrow2',
-        endLabel: LeaderLine.captionLabel('test fails',
-            {
-                outlineColor:'',
-                offset: [-75,-50],
+        // endLabel: LeaderLine.captionLabel('test fails',
+        //     {
+        //         outlineColor:'',
+        //         offset: [-75,-50],
 
-            }
+        //     }
 
-        ),
+        // ),
       }
     );
     
@@ -57,14 +57,14 @@
         size: 4,            // Line thickness
         dash: {animation: true},
         endPlug: 'arrow2',
-        endLabel: LeaderLine.captionLabel('test passes',
-            {
-                outlineColor:'',
-                offset: [20,-50],
+        // endLabel: LeaderLine.captionLabel('test passes',
+        //     {
+        //         outlineColor:'',
+        //         offset: [20,-50],
 
-            }
+        //     }
 
-        ),
+        // ),
       }
     );
 
@@ -128,13 +128,13 @@
         size: 4,            // Line thickness
         dash: {animation: true},
         endPlug: 'arrow2',
-        endLabel: LeaderLine.captionLabel('a test is born',
-            {
-                outlineColor:'',
-                offset: [20,-75],
+        // endLabel: LeaderLine.captionLabel('a test is born',
+        //     {
+        //         outlineColor:'',
+        //         offset: [20,-75],
 
-            }
-        ),
+        //     }
+        // ),
         
       }
       

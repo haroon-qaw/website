@@ -281,3 +281,74 @@ new Chart(investigationCtx, {
 });
 
 
+
+// Create maintenance chart
+const maintenanceCtx = document.getElementById('maintenanceChart').getContext('2d');
+
+// Generate data for the maintenance bell curve
+const maintenanceXValues = Array.from({ length: 91 }, (_, i) => 10 + i); // x-axis from 10 to 100 with 1-minute increments
+const maintenanceMean = 45;
+const maintenanceStdDev = 7;
+
+// Gaussian function for the maintenance chart
+const bellCurveMaintenance = x => {
+    return (1 / (maintenanceStdDev * Math.sqrt(2 * Math.PI))) * 
+           Math.exp(-0.5 * Math.pow((x - maintenanceMean) / maintenanceStdDev, 2));
+};
+
+// Prepare data in {x, y} format for numeric scaling
+const maintenanceData = maintenanceXValues.map(x => ({ x, y: bellCurveMaintenance(x) }));
+
+// Create the maintenance chart
+new Chart(maintenanceCtx, {
+    type: 'line',
+    data: {
+        datasets: [{
+            label: 'Maintenance Time Bell Curve',
+            data: maintenanceData, // Use {x, y} data format
+            borderColor: '#f4bdec', // Line color
+            backgroundColor: 'rgba(244, 189, 236, 0.5)', // Fill color
+            borderWidth: 2,
+            pointRadius: 0, // Remove dots
+            fill: true // Enable fill
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            x: {
+                type: 'linear', // Numeric scale
+                min: 10, // Set minimum value for x-axis
+                max: 100, // Set maximum value for x-axis
+                grid: {
+                    color: 'rgba(13, 242, 204, 0.5)' // X-axis grid color
+                },
+                title: {
+                    display: true,
+                    color: '#0DF2CC',
+                    text: 'minutes'
+                },
+                ticks: {
+                    callback: value => `${value}`, // Format ticks as minutes
+                    color: '#0DF2CC' // X-axis tick color
+                }
+            },
+            y: {
+                grid: {
+                    color: 'rgba(13, 242, 204, 0)' // Y-axis grid color
+                },
+                ticks: {
+                    display: false // Hide y-axis labels
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false // Disable legend
+            }
+        }
+    }
+});
+
+
