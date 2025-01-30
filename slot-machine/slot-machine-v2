@@ -4,825 +4,869 @@ let lastTotals = {
     flake: 0,
     bug: 0,
     maint: 0
-  };
-  
-  
+};
+
+
 document.addEventListener('DOMContentLoaded', () => {
-  // Buttons
-  const buttonRunOnce = document.getElementById('3d-1-suite');
-  const buttonRunMonth = document.getElementById('3d-run-month');
+    // Buttons
+    const buttonRunOnce = document.getElementById('3d-1-suite');
+    const buttonRunMonth = document.getElementById('3d-run-month');
 
-  // Container
-  const container = document.getElementById('slot-container');
+    // Container
+    const container = document.getElementById('slot-container');
 
-  // Totals display
-  const totalTimeDiv = document.getElementById('totalTime');
-  const totalCostDiv = document.getElementById('totalCost');
-  const totalTimeMaintDiv = document.getElementById('totalTime-maint');
-  const totalTimeBugDiv = document.getElementById('totalTime-bugs');
-  const totalTimeInvestigationDiv = document.getElementById('totalTime-investigation');
+    // Totals display
+    const totalTimeDiv = document.getElementById('totalTime');
+    const totalCostDiv = document.getElementById('totalCost');
 
+    const totalRunsDiv = document.getElementById('totalTestRuns');
+    let totalRunsCounter = 0;
 
-  // Audio
-  const resolvingSound = new Audio('https://cdn.freesound.org/previews/118/118239_1430216-lq.mp3');
-  resolvingSound.volume = 0.5;
-  const completionSound = new Audio('https://cdn.freesound.org/previews/56/56268_91374-lq.mp3');
-  completionSound.volume = 0.5;
-  const insertCoinSound = new Audio('https://cdn.freesound.org/previews/113/113095_1966560-lq.mp3');
+    //run log empty state
+    const logEmptyState = document.querySelector('.run-log_empty-state');
 
 
-  // Set how frequently tests fail
-  const passFailRates = {
-    pass: 85,  // 70% pass
-    fail: 15   // 30% fail
-  };
+    const totalTimeMaintDiv = document.getElementById('totalTime-maint');
+    const totalTimeBugDiv = document.getElementById('totalTime-bugs');
+    const totalTimeInvestigationDiv = document.getElementById('totalTime-investigation');
 
-  // Within a failure, how do we distribute among flake/bug/maint?
-  const failTypeRates = {
-    flake: 45,   // 45% of fails
-    bug: 5,     // 5% of fails
-    maint: 50    // 50% of fails
-  };
 
-  // Distributions for the actual "fix/maint time" or pass time
-  const distributionConfig = {
-    pass: {
-      name: 'slot-test-pass',
-      range: [1, 5], //not used
-      average: 3 //not used
-    },
-    bug: {
-      name: 'slot-test-bug',
-      range: [15, 45], //scale for min/max 
-      average: 30
-    },
-    maintenance: {
-      name: 'slot-test-maint',
-      range: [10, 100], //scale for min/max 
-      average: 45
-    },
-    flake: {
-      name: 'slot-test-flake',
-      range: [2, 10], //scale for min/max 
-      average: 6
-    }
-  };
+    // Audio
+    const resolvingSound = new Audio('https://cdn.freesound.org/previews/118/118239_1430216-lq.mp3');
+    resolvingSound.volume = 0.5;
+    const completionSound = new Audio('https://cdn.freesound.org/previews/56/56268_91374-lq.mp3');
+    completionSound.volume = 0.5;
+    const insertCoinSound = new Audio('https://cdn.freesound.org/previews/113/113095_1966560-lq.mp3');
 
-  // The investigation-time distributions for each fail type
-  const investigationTimesConfig = {
-    bug: {
-      range: [3, 40],
-      average: 17
-    },
-    maintenance: {
-      range: [3, 40],
-      average: 17
-    },
-    flake: {
-      range: [3, 40],
-      average: 17
-    }
-  };
 
-  // Data arrays for how many tests took each possible minute
-  // We'll create them dynamically based on the distribution range
-  const slotData = {
-    'slot-test-pass': [],
-    'slot-test-bug': [],
-    'slot-test-maint': [],
-    'slot-test-flake': []
-  };
+    // Set how frequently tests fail
+    const passFailRates = {
+        pass: 85,  // 70% pass
+        fail: 15   // 30% fail
+    };
 
-  // Also track the distribution for investigation times
-  // We'll store each possible minute for bug, maint, flake investigations
-  const investigationData = {
-    bug: [],
-    maintenance: [],
-    flake: []
-  };
+    // Within a failure, how do we distribute among flake/bug/maint?
+    const failTypeRates = {
+        flake: 45,   // 45% of fails
+        bug: 5,     // 5% of fails
+        maint: 50    // 50% of fails
+    };
 
-  // Helper to create arrays for each distribution
-  function initDistributionArrays() {
-    Object.entries(distributionConfig).forEach(([key, conf]) => {
-      const size = conf.range[1] - conf.range[0] + 1;
-      slotData[conf.name] = Array.from({ length: size }, () => 0);
-    });
-
-    Object.entries(investigationTimesConfig).forEach(([key, conf]) => {
-      const size = conf.range[1] - conf.range[0] + 1;
-      investigationData[key] = Array.from({ length: size }, () => 0);
-    });
-  }
-
-  // Initialize them now
-  initDistributionArrays();
-
-  // Maintenance chart
-  let maintChart;
-  // Bug chart
-  let bugChart;
-  // Investigation chart
-  let investigationChart;
-
-  // Keep track of how many slots have finished
-  let resolvedCount = 0;
-
-  // ----- Random Helpers -----
-  function getRandomWithinRange(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-
-  // A quick bell-curve random approach (the "6 rolls" method):
-  function getBellCurveRandom(min, max, average) {
-    let sum = 0;
-    for (let i = 0; i < 6; i++) {
-      sum += Math.random();
-    }
-    const normalized = sum / 6; // roughly normal(0,1)
-    const midpoint = (min + max) / 2;
-    const shift = average - midpoint;
-    return Math.round(min + (max - min) * normalized + shift);
-  }
-
-  // Weighted selection for pass/fail
-  function getPassOrFail() {
-    const r = Math.random() * 100;
-    return r < passFailRates.pass ? 'pass' : 'fail';
-  }
-
-  // Weighted selection for flake/bug/maint (only after fail)
-  function getFailType() {
-    const r = Math.random() * 100;
-    if (r < failTypeRates.flake) return 'flake';
-    else if (r < failTypeRates.flake + failTypeRates.bug) return 'bug';
-    else return 'maintenance';
-  }
-
-  // ----- Main Slot Logic -----
-  function startCycling(slot) {
-    let currentIndex = 0;
-    // Just cycle visually among pass/flake/bug/maint
-    const cyclingStates = [
-      distributionConfig.pass.name,
-      distributionConfig.flake.name,
-      distributionConfig.bug.name,
-      distributionConfig.maintenance.name
-    ];
-
-    // Cycle states visually every 100ms
-    const interval = setInterval(() => {
-      slot.className = `slot-test ${cyclingStates[currentIndex]}`;
-      currentIndex = (currentIndex + 1) % cyclingStates.length;
-    }, 100);
-
-    // Decide final outcome after random short spin
-    const stopTime = Math.random() * 1500 + 500; // 0.5 - 2 seconds
-    setTimeout(() => {
-      clearInterval(interval);
-
-      // 1. Determine pass or fail
-      const result = getPassOrFail();
-      let finalKey = 'pass'; // default
-      let finalState = distributionConfig.pass; // default
-
-      if (result === 'fail') {
-        // 2. Determine fail type
-        finalKey = getFailType();
-        finalState = distributionConfig[finalKey];
-      }
-
-      // 3. Calculate the "time" from that distribution
-      const finalTime = getBellCurveRandom(
-        finalState.range[0],
-        finalState.range[1],
-        finalState.average
-      );
-
-      // 4. Apply final CSS class
-      slot.className = `slot-test ${finalState.name}`;
-
-      // 5. Increment the distribution count for that time
-      const offset = finalState.range[0];
-      slotData[finalState.name][finalTime - offset]++;
-
-      // 6. If it's a failure, track investigation time
-      if (result === 'fail') {
-        // get the investigation time for finalKey
-        const invConfig = investigationTimesConfig[finalKey];
-        const invTime = getBellCurveRandom(
-          invConfig.range[0],
-          invConfig.range[1],
-          invConfig.average
-        );
-        // store it
-        const invOffset = invConfig.range[0];
-        investigationData[finalKey][invTime - invOffset]++;
-      }
-
-      // Update charts
-      updateMaintChart();
-      updateBugChart();
-      updateInvestigationChart();
-      updateTotals();
-
-      // Check if all slots done
-      resolvedCount++;
-      if (resolvedCount === 250) {
-        removeHighlightNumber();
-        resolvingSound.pause();
-        resolvingSound.currentTime = 0;
-        completionSound.play();
-        logRun("1 run");
-      }
-    }, stopTime);
-  }
-
-  // ----- Totals & Highlighting -----
-  function highlightNumber() {
-    const totalElements = document.querySelectorAll('.slot-result-num');
-    totalElements.forEach((element) => {
-      if (resolvedCount === 1) {
-        element.classList.add('highlight');
-      }
-    });
-  }
-
-  function removeHighlightNumber() {
-    const totalElements = document.querySelectorAll('.slot-result-num');
-    totalElements.forEach((element) => {
-      element.classList.remove('highlight');
-    });
-  }
-
-  // ----- Button Handlers -----
-  buttonRunOnce.addEventListener('click', () => {
-    container.innerHTML = '';
-    resolvedCount = 0;
-
-    //play insert coin sound
-    insertCoinSound.play();
-  
-    // 1) Capture the 'before' totals from slotData
-    //    so we know how many flakes/bugs/maint we had prior to THIS run.
-    lastTotals.flake = slotData['slot-test-flake'].reduce((sum, val) => sum + val, 0);
-    lastTotals.bug   = slotData['slot-test-bug'].reduce((sum, val) => sum + val, 0);
-    lastTotals.maint = slotData['slot-test-maint'].reduce((sum, val) => sum + val, 0);
-  
-    // 2) Normal spinning logic
-    resolvingSound.loop = true;
-    resolvingSound.play();
-  
-    for (let i = 0; i < 250; i++) {
-      const div = document.createElement('div');
-      div.className = 'slot-test';
-      container.appendChild(div);
-  
-      // Kick off the spin. 
-      // NOTE: We'll call logRun() in startCycling() after the last spin finishes.
-      startCycling(div);
-    }
-  });
-  
-
-  buttonRunMonth.addEventListener('click', () => {
-    const spins = 20; // number of "days" or "batches"
-    container.innerHTML = '';
-
-    //play insert coin sound
-    insertCoinSound.play();
-  
-    // STEP A: Snapshot the baseline so we know the "before" totals
-    lastTotals.flake = slotData['slot-test-flake'].reduce((sum, val) => sum + val, 0);
-    lastTotals.bug   = slotData['slot-test-bug'].reduce((sum, val) => sum + val, 0);
-    lastTotals.maint = slotData['slot-test-maint'].reduce((sum, val) => sum + val, 0);
-  
-    // Display the fun GIF (optional)
-    const gifElement = document.createElement('img');
-    gifElement.src = 'https://cdn.prod.website-files.com/6260298eca091b57c9cf188e/660b0e7df0f9891adf829656_wolf%20sunglasses.gif';
-    gifElement.className = 'slot-month-gif';
-    container.appendChild(gifElement);
-  
-    // After a short timeout, remove GIF and do the bulk simulation
-    setTimeout(() => {
-      gifElement.remove();
-      completionSound.play();
-  
-      // STEP B: Simulate "Month" runs (20 days * 250 tests)
-      // We do it instantly in code rather than spinning animations
-      for (let day = 0; day < spins; day++) {
-        for (let i = 0; i < 250; i++) {
-          // pick pass/fail
-          const result = getPassOrFail(); // your function
-          let finalKey = 'pass';
-          if (result === 'fail') {
-            finalKey = getFailType(); // your function (flake/bug/maint)
-          }
-  
-          // increment fix time distribution
-          const finalState = distributionConfig[finalKey];
-          const finalTime = getBellCurveRandom(
-            finalState.range[0],
-            finalState.range[1],
-            finalState.average
-          );
-          slotData[finalState.name][finalTime - finalState.range[0]]++;
-  
-          // if fail, also track investigation
-          if (result === 'fail') {
-            const invConfig = investigationTimesConfig[finalKey];
-            const invTime = getBellCurveRandom(
-              invConfig.range[0],
-              invConfig.range[1],
-              invConfig.average
-            );
-            investigationData[finalKey][invTime - invConfig.range[0]]++;
-          }
+    // Distributions for the actual "fix/maint time" or pass time
+    const distributionConfig = {
+        pass: {
+            name: 'slot-test-pass',
+            range: [1, 5], //not used
+            average: 3 //not used
+        },
+        bug: {
+            name: 'slot-test-bug',
+            range: [15, 45], //scale for min/max 
+            average: 30
+        },
+        maintenance: {
+            name: 'slot-test-maint',
+            range: [10, 100], //scale for min/max 
+            average: 45
+        },
+        flake: {
+            name: 'slot-test-flake',
+            range: [2, 10], //scale for min/max 
+            average: 6
         }
-      }
-  
-      // STEP C: Update charts and totals
-      updateMaintChart();
-      updateBugChart();
-      updateInvestigationChart();
-      updateTotals();  // updates your DOM counters, etc.
-  
-      // STEP D: Log the run-only data
-      // This calls logRun() to subtract lastTotals from the new totals
-      logRun("20 runs");
-    }, 1000);
-  });
-  
+    };
 
-  // ----- Totals -----
-  function updateTotals() {
-    // --- (A) Maintenance & Bug Test Time Summation ---
-    const totalMaintTime = slotData['slot-test-maint'].reduce((sum, count, idx) => {
-      const actualMin = idx + distributionConfig.maintenance.range[0];
-      return sum + count * actualMin;
-    }, 0);
-  
-    const totalBugTime = slotData['slot-test-bug'].reduce((sum, count, idx) => {
-      const actualMin = idx + distributionConfig.bug.range[0];
-      return sum + count * actualMin;
-    }, 0);
-  
-    // We still calculate flake time (for reference, if needed),
-    // but it won't be added to the final total:
-    const totalFlakeTime = slotData['slot-test-flake'].reduce((sum, count, idx) => {
-      const actualMin = idx + distributionConfig.flake.range[0];
-      return sum + count * actualMin;
-    }, 0);
-  
-    // --- (B) Investigation Time Summation (including flake) ---
-    const totalBugInvestTime = investigationData.bug.reduce((sum, count, idx) => {
-      const actualMin = idx + investigationTimesConfig.bug.range[0];
-      return sum + count * actualMin;
-    }, 0);
-  
-    const totalMaintInvestTime = investigationData.maintenance.reduce((sum, count, idx) => {
-      const actualMin = idx + investigationTimesConfig.maintenance.range[0];
-      return sum + count * actualMin;
-    }, 0);
-  
-    const totalFlakeInvestTime = investigationData.flake.reduce((sum, count, idx) => {
-      const actualMin = idx + investigationTimesConfig.flake.range[0];
-      return sum + count * actualMin;
-    }, 0);
-  
-    const totalInvestigationTime = totalBugInvestTime + totalMaintInvestTime + totalFlakeInvestTime;
-  
-    // --- (C) Combine: Only Bug + Maint Test Time, plus all Investigation Time ---
-    const totalTestTime = totalBugTime + totalMaintTime;  // FLake test time removed from total
-    const grandTotalMinutes = totalTestTime + totalInvestigationTime;
-  
-    // --- (D) Convert to hours & cost ---
-    const totalTimeHours = grandTotalMinutes / 60;
-    const totalCost = totalTimeHours * 65; // e.g., $65/hour
-  
-    // --- (E) Update DOM for overall time & cost ---
-    totalTimeDiv.textContent = `${totalTimeHours.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours`;
-    totalCostDiv.textContent = `$${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // The investigation-time distributions for each fail type
+    const investigationTimesConfig = {
+        bug: {
+            range: [3, 40],
+            average: 17
+        },
+        maintenance: {
+            range: [3, 40],
+            average: 17
+        },
+        flake: {
+            range: [3, 40],
+            average: 17
+        }
+    };
 
-    // --- (E) Breakdown times ---
-    totalTimeMaintDiv.textContent = `${(totalMaintTime / 60).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours for maintenance`;
-    totalTimeBugDiv.textContent = `${(totalBugTime / 60).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours for bugs`;
-    totalTimeInvestigationDiv.textContent = `${(totalInvestigationTime / 60).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours for investigation`;
+    // Data arrays for how many tests took each possible minute
+    // We'll create them dynamically based on the distribution range
+    const slotData = {
+        'slot-test-pass': [],
+        'slot-test-bug': [],
+        'slot-test-maint': [],
+        'slot-test-flake': []
+    };
 
+    // Also track the distribution for investigation times
+    // We'll store each possible minute for bug, maint, flake investigations
+    const investigationData = {
+        bug: [],
+        maintenance: [],
+        flake: []
+    };
 
-  
-    // --- (F) Count # of each test type (unchanged) ---
-    const totalMaintTests = slotData['slot-test-maint'].reduce((s, v) => s + v, 0);
-    const totalBugTests   = slotData['slot-test-bug'].reduce((s, v) => s + v, 0);
-    const totalFlakeTests = slotData['slot-test-flake'].reduce((s, v) => s + v, 0);
-  
-    const totalMaintTestsDiv = document.getElementById('totalMaintTests');
-    if (totalMaintTestsDiv) totalMaintTestsDiv.textContent = String(totalMaintTests);
-  
-    const totalBugTestsDiv = document.getElementById('totalBugTests');
-    if (totalBugTestsDiv) totalBugTestsDiv.textContent = String(totalBugTests);
-  
-    const totalFlakeTestsDiv = document.getElementById('totalFlakeTests');
-    if (totalFlakeTestsDiv) totalFlakeTestsDiv.textContent = String(totalFlakeTests);
-  
-    // --- (G) Sum all failures (flake + bug + maintenance) ---
-    const totalFailures = totalFlakeTests + totalBugTests + totalMaintTests;
-    const totalInvestigationTestsDiv = document.getElementById('totalInvestigationTests');
-    if (totalInvestigationTestsDiv) totalInvestigationTestsDiv.textContent = String(totalFailures);
-  
-    // highlight or anything else
-    highlightNumber();
-  }
-  
-  
+    // Helper to create arrays for each distribution
+    function initDistributionArrays() {
+        Object.entries(distributionConfig).forEach(([key, conf]) => {
+            const size = conf.range[1] - conf.range[0] + 1;
+            slotData[conf.name] = Array.from({ length: size }, () => 0);
+        });
 
-  //creates run log table
-  function logRun(runType = "Unknown Run") {
-    // 1) Current totals
-    const currentPass  = slotData['slot-test-pass'].reduce((sum, val) => sum + val, 0);
-    const currentFlake = slotData['slot-test-flake'].reduce((sum, val) => sum + val, 0);
-    const currentMaint = slotData['slot-test-maint'].reduce((sum, val) => sum + val, 0);
-    const currentBug   = slotData['slot-test-bug'].reduce((sum, val) => sum + val, 0);
-    
-  
-    // 2) Run-only data
-    const runPass  = currentPass  - lastTotals.pass;
-    const runFlake = currentFlake - lastTotals.flake;
-    const runMaint = currentMaint - lastTotals.maint;
-    const runBug   = currentBug   - lastTotals.bug;
-    const runTotal = runPass + runFlake + runBug + runMaint;
-  
-    // Update snapshot
-    lastTotals.pass  = currentPass;
-    lastTotals.flake = currentFlake;
-    lastTotals.maint = currentMaint;
-    lastTotals.bug   = currentBug;
-
-  
-    if (runTotal === 0) {
-      console.log("No new tests in this run.");
-      return;
+        Object.entries(investigationTimesConfig).forEach(([key, conf]) => {
+            const size = conf.range[1] - conf.range[0] + 1;
+            investigationData[key] = Array.from({ length: size }, () => 0);
+        });
     }
-  
-    // 3) Insert a row in .run-log_wrapper
-    const runLogWrapper = document.querySelector('.run-log_wrapper');
-    if (!runLogWrapper) return;
-  
-    const row = document.createElement('div');
-    row.className = 'run-log_row';
 
-    // Add a highlight
-    row.classList.add('highlight-new_row');
-  
-    // ---- TOP SECTION: run-type + results
-    const topSection = document.createElement('div');
-    topSection.className = 'run-log_top';
-  
-    // A) Left: run type
-    const runTypeDiv = document.createElement('div');
-    runTypeDiv.className = 'run-type';
-    runTypeDiv.textContent = runType; // e.g. "Single Suite Run"
-  
-    // B) Right: results with colored circles
-    const resultsDiv = document.createElement('div');
-    resultsDiv.className = 'run-results';
-    resultsDiv.appendChild(createResultItem('pass',   runPass,   'Pass'));
-    resultsDiv.appendChild(createResultItem('flake',  runFlake,  'Flake'));
-    resultsDiv.appendChild(createResultItem('maint',  runMaint,  'Maint'));
-    resultsDiv.appendChild(createResultItem('bug',    runBug,    'Bug'));
-    
-  
-    // Put runTypeDiv & resultsDiv in topSection
-    topSection.appendChild(runTypeDiv);
-    topSection.appendChild(resultsDiv);
-  
-    // ---- BOTTOM SECTION: progress bar
-    const barContainer = document.createElement('div');
-    barContainer.className = 'run-progress-bar';
-  
-    // 4) Build segments for pass/flake/bug/maint
-    const passPct  = (runPass  / runTotal) * 100;
-    const flakePct = (runFlake / runTotal) * 100;
-    const bugPct   = (runBug   / runTotal) * 100;
-    const maintPct = (runMaint / runTotal) * 100;
-  
-    const passSegment  = document.createElement('div');
-    passSegment.className = 'progress-segment pass-segment';
-    passSegment.style.width = passPct + '%';
-  
-    const flakeSegment = document.createElement('div');
-    flakeSegment.className = 'progress-segment flake-segment';
-    flakeSegment.style.width = flakePct + '%';
-     
-    const maintSegment = document.createElement('div');
-    maintSegment.className = 'progress-segment maint-segment';
-    maintSegment.style.width = maintPct + '%';
-    
-    const bugSegment   = document.createElement('div');
-    bugSegment.className = 'progress-segment bug-segment';
-    bugSegment.style.width = bugPct + '%';
-  
+    // Initialize them now
+    initDistributionArrays();
 
-  
-    barContainer.appendChild(passSegment);
-    barContainer.appendChild(flakeSegment);
-    barContainer.appendChild(maintSegment);
-    barContainer.appendChild(bugSegment);
-  
-    // 5) Put top section & bar container into row, then row into wrapper
-    row.appendChild(topSection);
-    row.appendChild(barContainer);
-    runLogWrapper.appendChild(row);
-    
-    // Now force scroll to bottom
-    runLogWrapper.scrollTop = runLogWrapper.scrollHeight;
-    
-    //remove highlight from new row
-    setTimeout(() => {
-        row.classList.remove('highlight-new_row');
-    }, 1000);
+    // Maintenance chart
+    let maintChart;
+    // Bug chart
+    let bugChart;
+    // Investigation chart
+    let investigationChart;
 
+    // Keep track of how many slots have finished
+    let resolvedCount = 0;
 
-}
+    // ----- Random Helpers -----
+    function getRandomWithinRange(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
 
+    // A quick bell-curve random approach (the "6 rolls" method):
+    function getBellCurveRandom(min, max, average) {
+        let sum = 0;
+        for (let i = 0; i < 6; i++) {
+            sum += Math.random();
+        }
+        const normalized = sum / 6; // roughly normal(0,1)
+        const midpoint = (min + max) / 2;
+        const shift = average - midpoint;
+        return Math.round(min + (max - min) * normalized + shift);
+    }
 
+    // Weighted selection for pass/fail
+    function getPassOrFail() {
+        const r = Math.random() * 100;
+        return r < passFailRates.pass ? 'pass' : 'fail';
+    }
 
-  
-  // Helper for "Pass:10" with a color circle
-  function createResultItem(key, count, label) {
-    const span = document.createElement('span');
-    span.className = 'result-item';
-  
-    const circle = document.createElement('div');
-    circle.className = `result-circle ${key}-circle`;
-  
-    const text = document.createElement('span');
-    text.textContent = ` ${label}:${count}`;
-  
-    span.appendChild(circle);
-    span.appendChild(text);
-    return span;
-  }
-  
+    // Weighted selection for flake/bug/maint (only after fail)
+    function getFailType() {
+        const r = Math.random() * 100;
+        if (r < failTypeRates.flake) return 'flake';
+        else if (r < failTypeRates.flake + failTypeRates.bug) return 'bug';
+        else return 'maintenance';
+    }
 
-  
+    // ----- Main Slot Logic -----
+    function startCycling(slot) {
+        let currentIndex = 0;
+        // Just cycle visually among pass/flake/bug/maint
+        const cyclingStates = [
+            distributionConfig.pass.name,
+            distributionConfig.flake.name,
+            distributionConfig.bug.name,
+            distributionConfig.maintenance.name
+        ];
 
+        // Cycle states visually every 100ms
+        const interval = setInterval(() => {
+            slot.className = `slot-test ${cyclingStates[currentIndex]}`;
+            currentIndex = (currentIndex + 1) % cyclingStates.length;
+        }, 100);
 
-  // ----- Chart Setup -----
-  function initializeMaintChart() {
-    const ctx = document.getElementById('maint-chart').getContext('2d');
-    maintChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: Array.from({ 
-          length: distributionConfig.maintenance.range[1] - distributionConfig.maintenance.range[0] + 1 
-        }, (_, i) => i + distributionConfig.maintenance.range[0]),
-        datasets: [
-          {
-            label: 'Maintenance',
-            data: slotData['slot-test-maint'],
-            borderColor: '#3b3bef',
-            backgroundColor: 'rgba(59, 59, 239, 0.2)',
-            borderWidth: 1,
-            pointBackgroundColor: '#3b3bef',
-            fill: true
-          }
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function(tooltipItem) {
-                const numTests = tooltipItem.raw;
-                const numMin = tooltipItem.label;
-                return `${numTests} needed ${numMin} minutes maintenance`;
-              },
-            },
-          },
-        },
-        scales: {
-          x: {
-            title: { display: true, text: 'Minutes' },
-            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-            ticks: { color: '#0df2cc' },
-          },
-          y: {
-            title: { display: true, text: '# of Tests' },
-            beginAtZero: true,
-            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-            ticks: { color: '#0df2cc' },
-            suggestedMin: 0,    // Start from 0
-            suggestedMax: 10,   // Start the upper limit at 40
-          },
-        },
-      },
-    });
-  }
+        // Decide final outcome after random short spin
+        const stopTime = Math.random() * 1500 + 500; // 0.5 - 2 seconds
+        setTimeout(() => {
+            clearInterval(interval);
 
-  function initializeBugChart() {
-    const ctx = document.getElementById('bug-chart').getContext('2d');
-    bugChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: Array.from({ 
-          length: distributionConfig.bug.range[1] - distributionConfig.bug.range[0] + 1 
-        }, (_, i) => i + distributionConfig.bug.range[0]),
-        datasets: [
-          {
-            label: 'Bug Fixes',
-            data: slotData['slot-test-bug'],
-            borderColor: '#f4bdec',
-            backgroundColor: 'rgba(244, 189, 236, 0.2)',
-            borderWidth: 1,
-            pointBackgroundColor: '#f4bdec',
-            fill: true
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function(tooltipItem) {
-                const numTests = tooltipItem.raw;
-                const numMin = tooltipItem.label;
-                return `${numTests} needed ${numMin} minutes to fix`;
-              }
+            // 1. Determine pass or fail
+            const result = getPassOrFail();
+            let finalKey = 'pass'; // default
+            let finalState = distributionConfig.pass; // default
+
+            if (result === 'fail') {
+                // 2. Determine fail type
+                finalKey = getFailType();
+                finalState = distributionConfig[finalKey];
             }
-          }
-        },
-        scales: {
-          x: {
-            title: { display: true, text: 'Minutes' },
-            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-            ticks: { color: '#0df2cc' },
-          },
-          y: {
-            title: { display: true, text: '# of Tests' },
-            beginAtZero: true,
-            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-            ticks: { color: '#0df2cc' },
-            suggestedMin: 0,    // Start from 0
-            suggestedMax: 10,   // Start the upper limit at 20
-          },
-        },
-      },
-    });
-  }
 
-  /**
-   * The new Investigation Chart. 
-   * This example shows 3 lines: flake, bug, maintenance. 
-   * Each line’s X-axis is the possible investigation times in minutes, 
-   * and Y is how many times that investigation length was needed.
-   */
+            // 3. Calculate the "time" from that distribution
+            const finalTime = getBellCurveRandom(
+                finalState.range[0],
+                finalState.range[1],
+                finalState.average
+            );
 
-  function initializeInvestigationChart() {
-    const ctx = document.getElementById('investigation-chart').getContext('2d');
-  
-    // Determine the largest possible investigation time among the three failure types
-    const largestMax = Math.max(
-      investigationTimesConfig.flake.range[1],
-      investigationTimesConfig.bug.range[1],
-      investigationTimesConfig.maintenance.range[1]
-    );
-  
-    // 2. Generate labels from 1 up to largestMax
-    const labels = Array.from({ length: largestMax }, (_, i) => i + 1);
+            // 4. Apply final CSS class
+            slot.className = `slot-test ${finalState.name}`;
 
-    // 3. Create an array of all zeroes, same length as labels
-    const zeroArray = Array.from({ length: largestMax }, () => 0);
-    
-    // Create the chart
-    investigationChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels, // [1, 2, 3, ...largestMax]
-          datasets: [
-            {
-              // SINGLE DATASET
-              label: 'All Investigations',
-              data: zeroArray,   // Initialize with all zeroes
-              borderColor: '#DEFF58',
-              backgroundColor: 'rgba(222, 255, 88, 0.2)',
-              pointBackgroundColor: '#DEFF58',
-              borderWidth: 1,
-              fill: true,
-            },
-          ],
-        },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-        legend: { display: false },
-        tooltip: {
-            callbacks: {
-              label: function(tooltipItem) {
-                const length = tooltipItem.label; // X value (investigation time in minutes)
-                const freq   = tooltipItem.raw;   // Y value (number of occurrences)
-                return `${freq} total investigations took ${length} minutes`;
-              }
+            // 5. Increment the distribution count for that time
+            const offset = finalState.range[0];
+            slotData[finalState.name][finalTime - offset]++;
+
+            // 6. If it's a failure, track investigation time
+            if (result === 'fail') {
+                // get the investigation time for finalKey
+                const invConfig = investigationTimesConfig[finalKey];
+                const invTime = getBellCurveRandom(
+                    invConfig.range[0],
+                    invConfig.range[1],
+                    invConfig.average
+                );
+                // store it
+                const invOffset = invConfig.range[0];
+                investigationData[finalKey][invTime - invOffset]++;
             }
-          }
-        },
-        scales: {
-          x: {
-            title: { display: true, text: 'Minutes' },
-            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-            ticks: { color: '#0df2cc' },
-          },
-          y: {
-            title: { display: true, text: '# of Failures' },
-            beginAtZero: true,
-            suggestedMin: 0,
-            suggestedMax: 20, // or whatever default you want
-            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-            ticks: { color: '#0df2cc' },
-          },
-        },
-      },
+
+            // Update charts
+            updateMaintChart();
+            updateBugChart();
+            updateInvestigationChart();
+            updateTotals();
+
+            // Check if all slots done
+            totalRunsCounter++;
+            resolvedCount++;
+
+
+
+            console.log("Total Runs Counter:", totalRunsCounter);
+            console.log("Resolved Count:", resolvedCount);
+
+
+            if (resolvedCount === 250) {
+                updateTotals();
+                removeHighlightNumber();
+                resolvingSound.pause();
+                resolvingSound.currentTime = 0;
+                completionSound.play();
+                logRun("1 run");
+                logEmptyState.style.display = 'none'; // Hide empty state if it's visible
+            }
+        }, stopTime);
+    }
+
+    // ----- Totals & Highlighting -----
+    function highlightNumber() {
+        const totalElements = document.querySelectorAll('.slot-result-num');
+        totalElements.forEach((element) => {
+            if (resolvedCount === 1) {
+                element.classList.add('highlight');
+            }
+        });
+    }
+
+    function removeHighlightNumber() {
+        const totalElements = document.querySelectorAll('.slot-result-num');
+        totalElements.forEach((element) => {
+            element.classList.remove('highlight');
+        });
+    }
+
+    // ----- Button Handlers -----
+    buttonRunOnce.addEventListener('click', () => {
+        container.innerHTML = '';
+        resolvedCount = 0;
+
+        //play insert coin sound
+        insertCoinSound.play();
+
+        // 1) Capture the 'before' totals from slotData
+        //    so we know how many flakes/bugs/maint we had prior to THIS run.
+        lastTotals.flake = slotData['slot-test-flake'].reduce((sum, val) => sum + val, 0);
+        lastTotals.bug = slotData['slot-test-bug'].reduce((sum, val) => sum + val, 0);
+        lastTotals.maint = slotData['slot-test-maint'].reduce((sum, val) => sum + val, 0);
+
+        // 2) Normal spinning logic
+        resolvingSound.loop = true;
+        resolvingSound.play();
+
+        for (let i = 0; i < 250; i++) {
+            const div = document.createElement('div');
+            div.className = 'slot-test';
+            container.appendChild(div);
+
+            // Kick off the spin. 
+            // NOTE: We'll call logRun() in startCycling() after the last spin finishes.
+            startCycling(div);
+        }
+
+
+
     });
-  }
-  
-  
 
-  // ----- Chart Updaters -----
-  function updateMaintChart() {
-    maintChart.data.datasets[0].data = slotData['slot-test-maint'];
-    maintChart.update();
-  }
 
-  function updateBugChart() {
-    bugChart.data.datasets[0].data = slotData['slot-test-bug'];
-    bugChart.update();
-  }
+    buttonRunMonth.addEventListener('click', () => {
+        logEmptyState.style.display = 'none'; // Hide empty state if it's visible
+        const spins = 20; // number of "days" or "batches"
+        container.innerHTML = '';
 
-  function updateInvestigationChart() {
-    // 1. Figure out the largest max time among flake, bug, and maintenance
-    const largestMax = Math.max(
-      investigationTimesConfig.flake.range[1],
-      investigationTimesConfig.bug.range[1],
-      investigationTimesConfig.maintenance.range[1]
-    );
-  
-    // 2. Create an empty array of length `largestMax` to hold the sums
-    const combined = Array.from({ length: largestMax }, () => 0);
-  
-    // A small helper function to add one distribution to the combined array
-    function addDistribution(dataArray, minRange) {
-      // dataArray covers minutes from minRange..(minRange + dataArray.length - 1)
-      dataArray.forEach((count, idx) => {
-        // The actual minute = minRange + idx
-        const minute = minRange + idx;  // e.g. if minRange=5, then minute=5,6,7,...
-        // Our `combined` array index is minute - 1 if labels start at 1
-        combined[minute - 1] += count;
-      });
+        //play insert coin sound
+        insertCoinSound.play();
+
+        // STEP A: Snapshot the baseline so we know the "before" totals
+        lastTotals.flake = slotData['slot-test-flake'].reduce((sum, val) => sum + val, 0);
+        lastTotals.bug = slotData['slot-test-bug'].reduce((sum, val) => sum + val, 0);
+        lastTotals.maint = slotData['slot-test-maint'].reduce((sum, val) => sum + val, 0);
+
+        // Display the fun GIF (optional)
+        const gifElement = document.createElement('img');
+        gifElement.src = 'https://cdn.prod.website-files.com/6260298eca091b57c9cf188e/660b0e7df0f9891adf829656_wolf%20sunglasses.gif';
+        gifElement.className = 'slot-month-gif';
+        container.appendChild(gifElement);
+
+        // After a short timeout, remove GIF and do the bulk simulation
+        setTimeout(() => {
+            gifElement.remove();
+            completionSound.play();
+
+            // STEP B: Simulate "Month" runs (20 days * 250 tests)
+            // We do it instantly in code rather than spinning animations
+            for (let day = 0; day < spins; day++) {
+                for (let i = 0; i < 250; i++) {
+                    // pick pass/fail
+                    const result = getPassOrFail(); // your function
+                    let finalKey = 'pass';
+                    if (result === 'fail') {
+                        finalKey = getFailType(); // your function (flake/bug/maint)
+                    }
+
+                    // increment fix time distribution
+                    const finalState = distributionConfig[finalKey];
+                    const finalTime = getBellCurveRandom(
+                        finalState.range[0],
+                        finalState.range[1],
+                        finalState.average
+                    );
+                    slotData[finalState.name][finalTime - finalState.range[0]]++;
+
+                    // if fail, also track investigation
+                    if (result === 'fail') {
+                        const invConfig = investigationTimesConfig[finalKey];
+                        const invTime = getBellCurveRandom(
+                            invConfig.range[0],
+                            invConfig.range[1],
+                            invConfig.average
+                        );
+                        investigationData[finalKey][invTime - invConfig.range[0]]++;
+                    }
+                }
+            }
+
+            // Update charts and totals
+            totalRunsCounter += 250 * spins;
+            updateMaintChart();
+            updateBugChart();
+            updateInvestigationChart();
+            updateTotals();  // updates DOM counters, etc.
+
+
+            // Log the run-only data
+            // This calls logRun() to subtract lastTotals from the new totals
+            logRun("20 runs");
+        }, 1000);
+    });
+
+
+    // ----- Totals -----
+    function updateTotals() {
+        // --- (A) Maintenance & Bug Test Time Summation ---
+        const totalMaintTime = slotData['slot-test-maint'].reduce((sum, count, idx) => {
+            const actualMin = idx + distributionConfig.maintenance.range[0];
+            return sum + count * actualMin;
+        }, 0);
+
+        const totalBugTime = slotData['slot-test-bug'].reduce((sum, count, idx) => {
+            const actualMin = idx + distributionConfig.bug.range[0];
+            return sum + count * actualMin;
+        }, 0);
+
+        // We still calculate flake time (for reference, if needed),
+        // but it won't be added to the final total:
+        const totalFlakeTime = slotData['slot-test-flake'].reduce((sum, count, idx) => {
+            const actualMin = idx + distributionConfig.flake.range[0];
+            return sum + count * actualMin;
+        }, 0);
+
+        // --- (B) Investigation Time Summation (including flake) ---
+        const totalBugInvestTime = investigationData.bug.reduce((sum, count, idx) => {
+            const actualMin = idx + investigationTimesConfig.bug.range[0];
+            return sum + count * actualMin;
+        }, 0);
+
+        const totalMaintInvestTime = investigationData.maintenance.reduce((sum, count, idx) => {
+            const actualMin = idx + investigationTimesConfig.maintenance.range[0];
+            return sum + count * actualMin;
+        }, 0);
+
+        const totalFlakeInvestTime = investigationData.flake.reduce((sum, count, idx) => {
+            const actualMin = idx + investigationTimesConfig.flake.range[0];
+            return sum + count * actualMin;
+        }, 0);
+
+        const totalInvestigationTime = totalBugInvestTime + totalMaintInvestTime + totalFlakeInvestTime;
+
+        // --- (C) Combine: Only Bug + Maint Test Time, plus all Investigation Time ---
+        const totalTestTime = totalBugTime + totalMaintTime;  // FLake test time removed from total
+        const grandTotalMinutes = totalTestTime + totalInvestigationTime;
+
+        // --- (D) Convert to hours & cost ---
+        const totalTimeHours = grandTotalMinutes / 60;
+        const totalCost = totalTimeHours * 65; // e.g., $65/hour
+
+        // --- (E) Update DOM for overall time & cost ---
+        totalTimeDiv.textContent = `${totalTimeHours.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours`;
+        totalCostDiv.textContent = `$${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+        // --- (E) Breakdown times ---
+        totalTimeMaintDiv.textContent = `${(totalMaintTime / 60).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours for maintenance`;
+        totalTimeBugDiv.textContent = `${(totalBugTime / 60).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours for bugs`;
+        totalTimeInvestigationDiv.textContent = `${(totalInvestigationTime / 60).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours for investigation`;
+
+
+
+        // --- (F) Count # of each test type (ensuring they are numbers) ---
+        const totalMaintTests = Number(slotData['slot-test-maint'].reduce((s, v) => s + v, 0));
+        const totalBugTests = Number(slotData['slot-test-bug'].reduce((s, v) => s + v, 0));
+        const totalFlakeTests = Number(slotData['slot-test-flake'].reduce((s, v) => s + v, 0));
+
+        // Helper function to update multiple elements with comma formatting
+        function updateElementText(id, value) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = Number(value).toLocaleString();
+            } else {
+                console.warn(`Element with ID '${id}' not found.`);
+            }
+        }
+
+        // ✅ Update main and duplicate elements with commas
+        updateElementText('totalMaintTests', totalMaintTests);
+        updateElementText('totalMaintTests-2', totalMaintTests);
+
+        updateElementText('totalBugTests', totalBugTests);
+        updateElementText('totalBugTests-2', totalBugTests);
+
+        updateElementText('totalFlakeTests', totalFlakeTests);
+        updateElementText('totalFlakeTests-2', totalFlakeTests);
+
+        // --- (G) Sum all failures (flake + bug + maintenance) ---
+        const totalFailures = totalFlakeTests + totalBugTests + totalMaintTests;
+        updateElementText('totalInvestigationTests', totalFailures);
+
+        // --- (H) Count total runs ---
+        if (totalRunsDiv) {
+            totalRunsDiv.textContent = Number(totalRunsCounter).toLocaleString();
+        } else {
+            console.warn("totalRunsDiv not found.");
+        }
+
+
+
+
+        // highlight or anything else
+        highlightNumber();
     }
-  
-    // 3. Add each distribution
-    addDistribution(investigationData.flake, investigationTimesConfig.flake.range[0]);
-    addDistribution(investigationData.bug,   investigationTimesConfig.bug.range[0]);
-    addDistribution(investigationData.maintenance, investigationTimesConfig.maintenance.range[0]);
-  
-    // 4. Apply the combined array to the single dataset
-    investigationChart.data.datasets[0].data = combined;
-  
-    // 5. Update the chart
-    investigationChart.update();
-  }
-  
-  
 
-  /**
-   * Utility to place the distribution array into a bigger array
-   * if the chart labels are bigger (like from 1 up to 30).
-   * range = [min, max], data is an array of length (max-min+1).
-   */
-  function fillArrayToMatchLabels(dataArray, [rangeMin, rangeMax]) {
-    // e.g. if rangeMin=5, rangeMax=15, dataArray has indexes 0..(15-5)
-    // But the chart might start at label=1 and end at label=30, for example.
-    // We'll just shift the data so that data at "minute" = i goes in the correct index.
-    const totalSize = investigationChart.data.labels.length; // the largest label
-    const filled = Array.from({ length: totalSize }, () => 0);
 
-    for (let i = rangeMin; i <= rangeMax; i++) {
-      const dataIndex = i - rangeMin; // index inside dataArray
-      const fillIndex = i - 1;        // index in the "labels" array if labels start at 1
-      filled[fillIndex] = dataArray[dataIndex];
+
+    //creates run log table
+    function logRun(runType = "Unknown Run") {
+        // 1) Current totals
+        const currentPass = slotData['slot-test-pass'].reduce((sum, val) => sum + val, 0);
+        const currentFlake = slotData['slot-test-flake'].reduce((sum, val) => sum + val, 0);
+        const currentMaint = slotData['slot-test-maint'].reduce((sum, val) => sum + val, 0);
+        const currentBug = slotData['slot-test-bug'].reduce((sum, val) => sum + val, 0);
+
+
+        // 2) Run-only data
+        const runPass = currentPass - lastTotals.pass;
+        const runFlake = currentFlake - lastTotals.flake;
+        const runMaint = currentMaint - lastTotals.maint;
+        const runBug = currentBug - lastTotals.bug;
+        const runTotal = runPass + runFlake + runBug + runMaint;
+
+        // Update snapshot
+        lastTotals.pass = currentPass;
+        lastTotals.flake = currentFlake;
+        lastTotals.maint = currentMaint;
+        lastTotals.bug = currentBug;
+
+
+        if (runTotal === 0) {
+            console.log("No new tests in this run.");
+            return;
+        }
+
+        // 3) Insert a row in .run-log_wrapper
+        const runLogWrapper = document.querySelector('.run-log_wrapper');
+        if (!runLogWrapper) return;
+
+        const row = document.createElement('div');
+        row.className = 'run-log_row';
+
+        // Add a highlight
+        row.classList.add('highlight-new_row');
+
+        // ---- TOP SECTION: run-type + results
+        const topSection = document.createElement('div');
+        topSection.className = 'run-log_top';
+
+        // A) Left: run type
+        const runTypeDiv = document.createElement('div');
+        runTypeDiv.className = 'run-type';
+        runTypeDiv.textContent = runType; // e.g. "Single Suite Run"
+
+        // B) Right: results with colored circles
+        const resultsDiv = document.createElement('div');
+        resultsDiv.className = 'run-results';
+        resultsDiv.appendChild(createResultItem('pass', runPass, 'Pass'));
+        resultsDiv.appendChild(createResultItem('flake', runFlake, 'Flake'));
+        resultsDiv.appendChild(createResultItem('maint', runMaint, 'Maint'));
+        resultsDiv.appendChild(createResultItem('bug', runBug, 'Bug'));
+
+
+        // Put runTypeDiv & resultsDiv in topSection
+        topSection.appendChild(runTypeDiv);
+        topSection.appendChild(resultsDiv);
+
+        // ---- BOTTOM SECTION: progress bar
+        const barContainer = document.createElement('div');
+        barContainer.className = 'run-progress-bar';
+
+        // 4) Build segments for pass/flake/bug/maint
+        const passPct = (runPass / runTotal) * 100;
+        const flakePct = (runFlake / runTotal) * 100;
+        const bugPct = (runBug / runTotal) * 100;
+        const maintPct = (runMaint / runTotal) * 100;
+
+        const passSegment = document.createElement('div');
+        passSegment.className = 'progress-segment pass-segment';
+        passSegment.style.width = passPct + '%';
+
+        const flakeSegment = document.createElement('div');
+        flakeSegment.className = 'progress-segment flake-segment';
+        flakeSegment.style.width = flakePct + '%';
+
+        const maintSegment = document.createElement('div');
+        maintSegment.className = 'progress-segment maint-segment';
+        maintSegment.style.width = maintPct + '%';
+
+        const bugSegment = document.createElement('div');
+        bugSegment.className = 'progress-segment bug-segment';
+        bugSegment.style.width = bugPct + '%';
+
+
+
+        barContainer.appendChild(passSegment);
+        barContainer.appendChild(flakeSegment);
+        barContainer.appendChild(maintSegment);
+        barContainer.appendChild(bugSegment);
+
+        // 5) Put top section & bar container into row, then row into wrapper
+        row.appendChild(topSection);
+        row.appendChild(barContainer);
+        runLogWrapper.appendChild(row);
+
+        // Now force scroll to bottom
+        runLogWrapper.scrollTop = runLogWrapper.scrollHeight;
+
+        //remove highlight from new row
+        setTimeout(() => {
+            row.classList.remove('highlight-new_row');
+        }, 1000);
+
+
     }
-    return filled;
-  }
 
-  // ----- Initialize Charts -----
-  initializeMaintChart();
-  initializeBugChart();
-  initializeInvestigationChart();
+
+
+
+    // Helper for "Pass:10" with a color circle
+    function createResultItem(key, count, label) {
+        const span = document.createElement('span');
+        span.className = 'result-item';
+
+        const circle = document.createElement('div');
+        circle.className = `result-circle ${key}-circle`;
+
+        const text = document.createElement('span');
+        text.textContent = ` ${label}:${count}`;
+
+        span.appendChild(circle);
+        span.appendChild(text);
+        return span;
+    }
+
+
+
+
+
+    // ----- Chart Setup -----
+    function initializeMaintChart() {
+        const ctx = document.getElementById('maint-chart').getContext('2d');
+        maintChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({
+                    length: distributionConfig.maintenance.range[1] - distributionConfig.maintenance.range[0] + 1
+                }, (_, i) => i + distributionConfig.maintenance.range[0]),
+                datasets: [
+                    {
+                        label: 'Maintenance',
+                        data: slotData['slot-test-maint'],
+                        borderColor: '#3b3bef',
+                        backgroundColor: 'rgba(59, 59, 239, 0.2)',
+                        borderWidth: 1,
+                        pointBackgroundColor: '#3b3bef',
+                        fill: true
+                    }
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function (tooltipItem) {
+                                const numTests = tooltipItem.raw;
+                                const numMin = tooltipItem.label;
+                                return `${numTests} needed ${numMin} minutes maintenance`;
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Minutes' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        ticks: { color: '#0df2cc' },
+                    },
+                    y: {
+                        title: { display: true, text: '# of Tests' },
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        ticks: { color: '#0df2cc' },
+                        suggestedMin: 0,    // Start from 0
+                        suggestedMax: 10,   // Start the upper limit at 40
+                    },
+                },
+            },
+        });
+    }
+
+    function initializeBugChart() {
+        const ctx = document.getElementById('bug-chart').getContext('2d');
+        bugChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({
+                    length: distributionConfig.bug.range[1] - distributionConfig.bug.range[0] + 1
+                }, (_, i) => i + distributionConfig.bug.range[0]),
+                datasets: [
+                    {
+                        label: 'Bug Fixes',
+                        data: slotData['slot-test-bug'],
+                        borderColor: '#f4bdec',
+                        backgroundColor: 'rgba(244, 189, 236, 0.2)',
+                        borderWidth: 1,
+                        pointBackgroundColor: '#f4bdec',
+                        fill: true
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function (tooltipItem) {
+                                const numTests = tooltipItem.raw;
+                                const numMin = tooltipItem.label;
+                                return `${numTests} needed ${numMin} minutes to fix`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Minutes' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        ticks: { color: '#0df2cc' },
+                    },
+                    y: {
+                        title: { display: true, text: '# of Tests' },
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        ticks: { color: '#0df2cc' },
+                        suggestedMin: 0,    // Start from 0
+                        suggestedMax: 10,   // Start the upper limit at 20
+                    },
+                },
+            },
+        });
+    }
+
+    /**
+     * The new Investigation Chart. 
+     * This example shows 3 lines: flake, bug, maintenance. 
+     * Each line’s X-axis is the possible investigation times in minutes, 
+     * and Y is how many times that investigation length was needed.
+     */
+
+    function initializeInvestigationChart() {
+        const ctx = document.getElementById('investigation-chart').getContext('2d');
+
+        // Determine the largest possible investigation time among the three failure types
+        const largestMax = Math.max(
+            investigationTimesConfig.flake.range[1],
+            investigationTimesConfig.bug.range[1],
+            investigationTimesConfig.maintenance.range[1]
+        );
+
+        // 2. Generate labels from 1 up to largestMax
+        const labels = Array.from({ length: largestMax }, (_, i) => i + 1);
+
+        // 3. Create an array of all zeroes, same length as labels
+        const zeroArray = Array.from({ length: largestMax }, () => 0);
+
+        // Create the chart
+        investigationChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels, // [1, 2, 3, ...largestMax]
+                datasets: [
+                    {
+                        // SINGLE DATASET
+                        label: 'All Investigations',
+                        data: zeroArray,   // Initialize with all zeroes
+                        borderColor: '#DEFF58',
+                        backgroundColor: 'rgba(222, 255, 88, 0.2)',
+                        pointBackgroundColor: '#DEFF58',
+                        borderWidth: 1,
+                        fill: true,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function (tooltipItem) {
+                                const length = tooltipItem.label; // X value (investigation time in minutes)
+                                const freq = tooltipItem.raw;   // Y value (number of occurrences)
+                                return `${freq} total investigations took ${length} minutes`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Minutes' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        ticks: { color: '#0df2cc' },
+                    },
+                    y: {
+                        title: { display: true, text: '# of Failures' },
+                        beginAtZero: true,
+                        suggestedMin: 0,
+                        suggestedMax: 20, // or whatever default you want
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        ticks: { color: '#0df2cc' },
+                    },
+                },
+            },
+        });
+    }
+
+
+
+    // ----- Chart Updaters -----
+    function updateMaintChart() {
+        maintChart.data.datasets[0].data = slotData['slot-test-maint'];
+        maintChart.update();
+    }
+
+    function updateBugChart() {
+        bugChart.data.datasets[0].data = slotData['slot-test-bug'];
+        bugChart.update();
+    }
+
+    function updateInvestigationChart() {
+        // 1. Figure out the largest max time among flake, bug, and maintenance
+        const largestMax = Math.max(
+            investigationTimesConfig.flake.range[1],
+            investigationTimesConfig.bug.range[1],
+            investigationTimesConfig.maintenance.range[1]
+        );
+
+        // 2. Create an empty array of length `largestMax` to hold the sums
+        const combined = Array.from({ length: largestMax }, () => 0);
+
+        // A small helper function to add one distribution to the combined array
+        function addDistribution(dataArray, minRange) {
+            // dataArray covers minutes from minRange..(minRange + dataArray.length - 1)
+            dataArray.forEach((count, idx) => {
+                // The actual minute = minRange + idx
+                const minute = minRange + idx;  // e.g. if minRange=5, then minute=5,6,7,...
+                // Our `combined` array index is minute - 1 if labels start at 1
+                combined[minute - 1] += count;
+            });
+        }
+
+        // 3. Add each distribution
+        addDistribution(investigationData.flake, investigationTimesConfig.flake.range[0]);
+        addDistribution(investigationData.bug, investigationTimesConfig.bug.range[0]);
+        addDistribution(investigationData.maintenance, investigationTimesConfig.maintenance.range[0]);
+
+        // 4. Apply the combined array to the single dataset
+        investigationChart.data.datasets[0].data = combined;
+
+        // 5. Update the chart
+        investigationChart.update();
+    }
+
+
+
+    /**
+     * Utility to place the distribution array into a bigger array
+     * if the chart labels are bigger (like from 1 up to 30).
+     * range = [min, max], data is an array of length (max-min+1).
+     */
+    function fillArrayToMatchLabels(dataArray, [rangeMin, rangeMax]) {
+        // e.g. if rangeMin=5, rangeMax=15, dataArray has indexes 0..(15-5)
+        // But the chart might start at label=1 and end at label=30, for example.
+        // We'll just shift the data so that data at "minute" = i goes in the correct index.
+        const totalSize = investigationChart.data.labels.length; // the largest label
+        const filled = Array.from({ length: totalSize }, () => 0);
+
+        for (let i = rangeMin; i <= rangeMax; i++) {
+            const dataIndex = i - rangeMin; // index inside dataArray
+            const fillIndex = i - 1;        // index in the "labels" array if labels start at 1
+            filled[fillIndex] = dataArray[dataIndex];
+        }
+        return filled;
+    }
+
+    // ----- Initialize Charts -----
+    initializeMaintChart();
+    initializeBugChart();
+    initializeInvestigationChart();
 
 });

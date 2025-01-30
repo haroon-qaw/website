@@ -352,3 +352,73 @@ new Chart(maintenanceCtx, {
 });
 
 
+// Create bug chart
+const bugCtx = document.getElementById('bugChart').getContext('2d');
+
+// Generate data for the bug fix bell curve
+const bugXValues = Array.from({ length: 51 }, (_, i) => 10 + i); // x-axis from 10 to 60 with 1-minute increments
+const bugMean = 30;
+const bugStdDev = 5;
+
+// Gaussian function for the bug chart
+const bellCurveBug = x => {
+    return (1 / (bugStdDev * Math.sqrt(2 * Math.PI))) * 
+           Math.exp(-0.5 * Math.pow((x - bugMean) / bugStdDev, 2));
+};
+
+// Prepare data in {x, y} format for numeric scaling
+const bugData = bugXValues.map(x => ({ x, y: bellCurveBug(x) }));
+
+// Create the bug chart
+new Chart(bugCtx, {
+    type: 'line',
+    data: {
+        datasets: [{
+            label: 'Bug Fix Time Bell Curve',
+            data: bugData, // Use {x, y} data format
+            borderColor: '#f4bdec', // Line color
+            backgroundColor: 'rgba(244, 189, 236, 0.5)', // Fill color
+            borderWidth: 2,
+            pointRadius: 0, // Remove dots
+            fill: true // Enable fill
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            x: {
+                type: 'linear', // Numeric scale
+                min: 10, // Set minimum value for x-axis
+                max: 60, // Set maximum value for x-axis
+                grid: {
+                    color: 'rgba(13, 242, 204, 0.5)' // X-axis grid color
+                },
+                title: {
+                    display: true,
+                    color: '#0DF2CC',
+                    text: 'minutes'
+                },
+                ticks: {
+                    callback: value => `${value}`, // Format ticks as minutes
+                    color: '#0DF2CC' // X-axis tick color
+                }
+            },
+            y: {
+                grid: {
+                    color: 'rgba(13, 242, 204, 0)' // Y-axis grid color
+                },
+                ticks: {
+                    display: false // Hide y-axis labels
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false // Disable legend
+            }
+        }
+    }
+});
+
+
