@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Buttons
     const buttonRunOnce = document.getElementById('3d-1-suite');
     const buttonRunMonth = document.getElementById('3d-run-month');
+    const audioToggle = document.getElementById('audio-toggle');
 
     // Container
     const container = document.getElementById('slot-container');
@@ -37,6 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const completionSound = new Audio('https://cdn.freesound.org/previews/56/56268_91374-lq.mp3');
     completionSound.volume = 0.5;
     const insertCoinSound = new Audio('https://cdn.freesound.org/previews/113/113095_1966560-lq.mp3');
+
+
 
 
     // Set how frequently tests fail
@@ -309,26 +312,26 @@ document.addEventListener('DOMContentLoaded', () => {
         logEmptyState.style.display = 'none'; // Hide empty state if it's visible
         const spins = 20; // number of "days" or "batches"
         container.innerHTML = '';
-
-        //play insert coin sound
+    
+        // Play insert coin sound
         insertCoinSound.play();
-
+    
         // STEP A: Snapshot the baseline so we know the "before" totals
         lastTotals.flake = slotData['slot-test-flake'].reduce((sum, val) => sum + val, 0);
         lastTotals.bug = slotData['slot-test-bug'].reduce((sum, val) => sum + val, 0);
         lastTotals.maint = slotData['slot-test-maint'].reduce((sum, val) => sum + val, 0);
-
+    
         // Display the fun GIF (optional)
         const gifElement = document.createElement('img');
         gifElement.src = 'https://cdn.prod.website-files.com/6260298eca091b57c9cf188e/660b0e7df0f9891adf829656_wolf%20sunglasses.gif';
         gifElement.className = 'slot-month-gif';
         container.appendChild(gifElement);
-
+    
         // After a short timeout, remove GIF and do the bulk simulation
         setTimeout(() => {
             gifElement.remove();
             completionSound.play();
-
+    
             // STEP B: Simulate "Month" runs (20 days * 250 tests)
             // We do it instantly in code rather than spinning animations
             for (let day = 0; day < spins; day++) {
@@ -339,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (result === 'fail') {
                         finalKey = getFailType(); // your function (flake/bug/maint)
                     }
-
+    
                     // increment fix time distribution
                     const finalState = distributionConfig[finalKey];
                     const finalTime = getBellCurveRandom(
@@ -348,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         finalState.average
                     );
                     slotData[finalState.name][finalTime - finalState.range[0]]++;
-
+    
                     // if fail, also track investigation
                     if (result === 'fail') {
                         const invConfig = investigationTimesConfig[finalKey];
@@ -361,20 +364,92 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }
-
+    
             // Update charts and totals
             totalRunsCounter += 250 * spins;
             updateMaintChart();
             updateBugChart();
             updateInvestigationChart();
             updateTotals();  // updates DOM counters, etc.
-
-
+    
             // Log the run-only data
-            // This calls logRun() to subtract lastTotals from the new totals
             logRun("20 runs");
+    
+            // --- STEP C: Build Slot Screen Design ---
+            createSlotScreen();
+    
         }, 1000);
     });
+
+
+    // Audio toggle
+    audioToggle.addEventListener('click', () => {
+        if (audioToggle.classList.contains('audio-on')) {
+            audioToggle.classList.remove('audio-on');
+            audioToggle.classList.add('audio-off');
+            resolvingSound.muted = true;
+            completionSound.muted = true;
+            insertCoinSound.muted = true;
+        } else {
+            audioToggle.classList.remove('audio-off');
+            audioToggle.classList.add('audio-on');
+            resolvingSound.muted = false;
+            completionSound.muted = false;
+            insertCoinSound.muted = false;
+        }
+    });
+
+    
+    // Function to generate the slot screen after the simulation
+    function createSlotScreen() {
+        // Select or create the container with the class 'slot-screen-inner'
+        let slotScreenInner = document.querySelector('.slot-screen-inner');
+        if (!slotScreenInner) {
+            slotScreenInner = document.createElement('div');
+            slotScreenInner.className = 'slot-screen-inner';
+            document.body.appendChild(slotScreenInner);
+        }
+    
+        // Clear previous slot design
+        slotScreenInner.innerHTML = '';
+    
+        // Create 250 divs with the class 'slot-test' inside 'slot-screen-inner'
+        for (let i = 0; i < 250; i++) {
+            const div = document.createElement('div');
+            div.className = 'slot-test';
+            div.dataset.index = i + 1; // Add a custom data attribute for indexing
+            slotScreenInner.appendChild(div);
+        }
+    
+        // Function to select specific divs by their index and apply a new class
+        function applyClassToMultipleDivs(indices, newClass) {
+            indices.forEach(index => {
+                const div = slotScreenInner.querySelector(`div[data-index='${index}']`);
+                if (div) {
+                    div.classList.add(newClass);
+                } else {
+                    console.error(`Div number ${index} not found.`);
+                }
+            });
+        }
+        
+
+        // create the arrow design here
+        // Green (slot-test-pass) indi1ces
+        const greenIndices = [
+            38,39,40,46,47,69,90,94,97,120,144,165,191,192,193,194
+          ]
+    
+        // Pink (slot-test-bug) indices
+        const pinkIndices = [150,149,136,135,125,124,111,110];
+    
+        // Apply the 'slot-test-pass' class to the green dots
+        applyClassToMultipleDivs(greenIndices, 'slot-test-pass');
+    
+        // Apply the 'slot-test-bug' class to the pink dots
+        applyClassToMultipleDivs(pinkIndices, 'slot-test-bug');
+    }
+    
 
 
     // ----- Totals -----
@@ -868,5 +943,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeMaintChart();
     initializeBugChart();
     initializeInvestigationChart();
+
+
 
 });
