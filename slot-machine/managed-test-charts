@@ -32,6 +32,9 @@ new Chart(creationCtx, {
         }]
     },
     options: {
+        tooltips: {
+            enabled: false
+        },
         responsive: true,
         maintainAspectRatio: false,
         scales: {
@@ -103,6 +106,9 @@ new Chart(runCtx, {
         }]
     },
     options: {
+        tooltips: {
+            enabled: false
+        },
         responsive: true,
         maintainAspectRatio: false,
         scales: {
@@ -171,6 +177,9 @@ new Chart(failCtx, {
         }]
     },
     options: {
+        tooltips: {
+            enabled: false
+        },
         responsive: true,
         maintainAspectRatio: false,
         scales: {
@@ -243,6 +252,9 @@ new Chart(investigationCtx, {
         }]
     },
     options: {
+        tooltips: {
+            enabled: false
+        },
         responsive: true,
         maintainAspectRatio: false,
         scales: {
@@ -314,6 +326,9 @@ new Chart(maintenanceCtx, {
         }]
     },
     options: {
+        tooltips: {
+            enabled: false
+        },
         responsive: true,
         maintainAspectRatio: false,
         scales: {
@@ -384,6 +399,9 @@ new Chart(bugCtx, {
         }]
     },
     options: {
+        tooltips: {
+            enabled: false
+        },
         responsive: true,
         maintainAspectRatio: false,
         scales: {

@@ -565,13 +565,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalFlakeTests = Number(slotData['slot-test-flake'].reduce((s, v) => s + v, 0));
 
         // Helper function to update multiple elements with comma formatting
-        function updateElementText(id, value) {
-            const element = document.getElementById(id);
-            if (element) {
-                element.textContent = Number(value).toLocaleString();
-            } else {
-                console.warn(`Element with ID '${id}' not found.`);
+        function updateElementText(ids, value) {
+            // Convert single string to an array for consistency
+            if (!Array.isArray(ids)) {
+                ids = [ids]; // Convert to array if it's a string
             }
+
+            ids.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = Number(value).toLocaleString();
+                } else {
+                    console.warn(`Element with ID '${id}' not found.`);
+                }
+            });
         }
 
         // ✅ Update main and duplicate elements with commas
@@ -586,7 +593,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- (G) Sum all failures (flake + bug + maintenance) ---
         const totalFailures = totalFlakeTests + totalBugTests + totalMaintTests;
-        updateElementText('totalInvestigationTests', totalFailures);
+        updateElementText(['totalInvestigationTests', 'totalInvestigationTests-2'], totalFailures);
+
 
         // --- (H) Count total runs ---
         if (totalRunsDiv) {
