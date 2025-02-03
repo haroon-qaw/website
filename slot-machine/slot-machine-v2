@@ -283,6 +283,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function highlightMonthRun() {
+        const totalElements = document.querySelectorAll('.slot-result-num');
+        totalElements.forEach((element) => {
+            element.classList.add('highlight'); // Add the highlight
+        });
+    
+        // Remove highlight after a delay (adjust timing as needed)
+        setTimeout(() => {
+            totalElements.forEach((element) => {
+                element.classList.remove('highlight');
+            });
+        }, 1000);
+    }
+    
+
     // ----- Button Handlers -----
 
     //Run once button
@@ -333,6 +348,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
         // Play insert coin sound
         insertCoinSound.play();
+
+        // Highlight the total numbers
+        highlightMonthRun();
     
         // STEP A: Snapshot the baseline so we know the "before" totals
         lastTotals.flake = slotData['slot-test-flake'].reduce((sum, val) => sum + val, 0);
@@ -357,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gifElement.remove();
             completionSound.play();
 
-            // Re-enable button after spinning ends
+            
             slotButtonContainerMonth.classList.remove('disabled');
             buttonRunMonth.classList.remove('disabled'); 
 
