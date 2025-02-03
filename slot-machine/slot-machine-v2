@@ -13,6 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const buttonRunMonth = document.getElementById('3d-run-month');
     const audioToggle = document.getElementById('audio-toggle');
 
+    //capture slot button containers
+    const slotButtonContainer1 = document.getElementById('slot_button_container-right');
+    const slotButtonContainerMonth = document.getElementById('slot_button_container-left');
+
     // Container
     const container = document.getElementById('slot-container');
 
@@ -242,8 +246,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-            console.log("Total Runs Counter:", totalRunsCounter);
-            console.log("Resolved Count:", resolvedCount);
+            //console.log("Total Runs Counter:", totalRunsCounter);
+            //console.log("Resolved Count:", resolvedCount);
 
 
             if (resolvedCount === 250) {
@@ -254,6 +258,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 completionSound.play();
                 logRun("1 run");
                 logEmptyState.style.display = 'none'; // Hide empty state if it's visible
+                // Re-enable button after spinning ends
+                slotButtonContainer1.classList.remove('disabled');
+                buttonRunOnce.classList.remove('disabled'); 
+                
             }
         }, stopTime);
     }
@@ -276,7 +284,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----- Button Handlers -----
+
+    //Run once button
     buttonRunOnce.addEventListener('click', () => {
+
+        //add classes to disable button 
+        slotButtonContainer1.classList.add('disabled');
+        if (buttonRunOnce.classList.contains('disabled')) return; // Prevent multiple clicks
+        buttonRunOnce.classList.add('disabled'); // Visually disable button
+
+
         container.innerHTML = '';
         resolvedCount = 0;
 
@@ -308,6 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
+    //Run month button
     buttonRunMonth.addEventListener('click', () => {
         logEmptyState.style.display = 'none'; // Hide empty state if it's visible
         const spins = 20; // number of "days" or "batches"
@@ -321,6 +339,13 @@ document.addEventListener('DOMContentLoaded', () => {
         lastTotals.bug = slotData['slot-test-bug'].reduce((sum, val) => sum + val, 0);
         lastTotals.maint = slotData['slot-test-maint'].reduce((sum, val) => sum + val, 0);
     
+
+        //disable button
+        slotButtonContainerMonth.classList.add('disabled');
+        if (buttonRunMonth.classList.contains('disabled')) return; // Prevent multiple clicks
+        buttonRunMonth.classList.add('disabled'); // Visually disable button
+
+
         // Display the fun GIF (optional)
         const gifElement = document.createElement('img');
         gifElement.src = 'https://cdn.prod.website-files.com/6260298eca091b57c9cf188e/660b0e7df0f9891adf829656_wolf%20sunglasses.gif';
@@ -331,7 +356,12 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             gifElement.remove();
             completionSound.play();
-    
+
+            // Re-enable button after spinning ends
+            slotButtonContainerMonth.classList.remove('disabled');
+            buttonRunMonth.classList.remove('disabled'); 
+
+
             // STEP B: Simulate "Month" runs (20 days * 250 tests)
             // We do it instantly in code rather than spinning animations
             for (let day = 0; day < spins; day++) {
@@ -377,6 +407,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
             // --- STEP C: Build Slot Screen Design ---
             createSlotScreen();
+
+
     
         }, 1000);
     });
