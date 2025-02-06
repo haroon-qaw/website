@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Data arrays for how many tests took each possible minute
-    // We'll create them dynamically based on the distribution range
+    // Create them dynamically based on the distribution range
     const slotData = {
         'slot-test-pass': [],
         'slot-test-bug': [],
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Also track the distribution for investigation times
-    // We'll store each possible minute for bug, maint, flake investigations
+    // Store each possible minute for bug, maint, flake investigations
     const investigationData = {
         bug: [],
         maintenance: [],
@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalElements = document.querySelectorAll('.slot-result-num');
         totalElements.forEach((element) => {
             if (resolvedCount === 1) {
-                element.classList.add('highlight');
+                element.classList.add('slot-highlight');
             }
         });
     }
@@ -279,20 +279,20 @@ document.addEventListener('DOMContentLoaded', () => {
     function removeHighlightNumber() {
         const totalElements = document.querySelectorAll('.slot-result-num');
         totalElements.forEach((element) => {
-            element.classList.remove('highlight');
+            element.classList.remove('slot-highlight');
         });
     }
 
     function highlightMonthRun() {
         const totalElements = document.querySelectorAll('.slot-result-num');
         totalElements.forEach((element) => {
-            element.classList.add('highlight'); // Add the highlight
+            element.classList.add('slot-highlight'); // Add the highlight
         });
     
         // Remove highlight after a delay (adjust timing as needed)
         setTimeout(() => {
             totalElements.forEach((element) => {
-                element.classList.remove('highlight');
+                element.classList.remove('slot-highlight');
             });
         }, 1000);
     }
