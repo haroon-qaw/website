@@ -1,1 +1,1 @@
-var test = 10;
+document.body.style.backgroundColor = "black";
